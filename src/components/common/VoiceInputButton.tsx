@@ -1,0 +1,143 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Mic, MicOff } from 'lucide-react';
+import { createSpeechRecognizer, isSpeechSupported } from '../../utils/speechRecognition';
+import { useTranslation } from 'react-i18next';
+
+interface VoiceInputButtonProps {
+  onTranscript: (text: string) => void;
+  onFinalTranscript?: (text: string) => void;
+  onListeningChange?: (isListening: boolean) => void;
+  lang?: string;
+  className?: string;
+  buttonSize?: 'normal' | 'large';
+  label?: string;
+}
+
+export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
+  onTranscript,
+  onFinalTranscript,
+  onListeningChange,
+  lang,
+  className = '',
+  buttonSize = 'normal',
+  label,
+}) => {
+  const { i18n, t } = useTranslation();
+  const [isListening, setIsListening] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const recognitionRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<any>(null);
+  const accumulatedTranscriptRef = useRef<string>('');
+
+  useEffect(() => {
+    setSupported(isSpeechSupported());
+  }, []);
+
+  const updateListening = (val: boolean) => {
+    setIsListening(val);
+    if (onListeningChange) onListeningChange(val);
+  };
+
+  const stopRecognition = () => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+    updateListening(false);
+  };
+
+  const toggleListening = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!supported) {
+      alert('Voice speech recognition is not supported in this browser. You can type directly.');
+      return;
+    }
+
+    if (isListening) {
+      stopRecognition();
+      if (accumulatedTranscriptRef.current && onFinalTranscript) {
+        onFinalTranscript(accumulatedTranscriptRef.current.trim());
+      }
+    } else {
+      accumulatedTranscriptRef.current = '';
+      const recognition = createSpeechRecognizer(
+        (text, isFinal) => {
+          accumulatedTranscriptRef.current = text;
+          onTranscript(text);
+
+          if (isFinal) {
+            // Set auto-send silence timer if onFinalTranscript is provided
+            if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = setTimeout(() => {
+              if (onFinalTranscript && text.trim()) {
+                stopRecognition();
+                onFinalTranscript(text.trim());
+              }
+            }, 1400);
+          }
+        },
+        (error) => {
+          console.warn('Voice error:', error);
+          updateListening(false);
+        },
+        () => {
+          updateListening(false);
+        }
+      );
+
+      if (recognition) {
+        // Map current language
+        const appLang = lang || i18n.language;
+        if (appLang === 'sn') {
+          recognition.lang = 'sn-ZW';
+        } else if (appLang === 'nd') {
+          recognition.lang = 'nr-ZA';
+        } else {
+          recognition.lang = 'en-ZW';
+        }
+
+        try {
+          recognition.start();
+          recognitionRef.current = recognition;
+          updateListening(true);
+        } catch (err) {
+          console.error('Failed to start speech recognition', err);
+          updateListening(false);
+        }
+      }
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      id="voice-input-btn"
+      onClick={toggleListening}
+      title={isListening ? t('common.listening') : t('common.tap_mic_to_speak')}
+      className={`min-h-[48px] min-w-[48px] px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all cursor-pointer select-none ${
+        isListening
+          ? 'bg-rose-600 text-white animate-pulse shadow-lg ring-4 ring-rose-200'
+          : 'bg-slate-100 hover:bg-slate-200 text-farm-navy active:bg-slate-300'
+      } ${className}`}
+    >
+      {isListening ? (
+        <>
+          <MicOff className="w-5 h-5 text-white" />
+          <span className="text-sm font-bold tracking-wide">{t('common.listening')}</span>
+        </>
+      ) : (
+        <>
+          <Mic className="w-5 h-5 text-farm-navy" />
+          {label ? <span className="text-sm font-semibold">{label}</span> : null}
+        </>
+      )}
+    </button>
+  );
+};

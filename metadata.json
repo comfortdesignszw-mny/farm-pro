@@ -1,0 +1,6 @@
+{
+  "name": "Farm Pro",
+  "description": "Offline-first farming record-keeper and advisory app for African smallholders with multi-language support and AI farm advisory.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --color-farm-navy: #0A2540;
+  --color-farm-navy-dark: #06182B;
+  --color-farm-navy-light: #153B64;
+  --color-farm-cyan: #00B4D8;
+  --color-farm-cyan-light: #48CAE4;
+  --color-farm-cyan-subtle: #E0F7FA;
+  --color-farm-amber: #D97706;
+  --color-farm-amber-subtle: #FEF3C7;
+  --color-farm-emerald: #059669;
+  --color-farm-emerald-subtle: #D1FAE5;
+  --color-farm-rose: #E11D48;
+  --color-farm-rose-subtle: #FFE4E6;
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Radically clear, readable outdoor styles */
+  body {
+    font-size: 18px;
+    line-height: 1.55;
+    background-color: #FFFFFF;
+    color: #0A2540;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: #0A2540;
+  }
+}
+
+/* Custom scrollbar and accessibility utilities */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #94A3B8;
+  border-radius: 9999px;
+}
