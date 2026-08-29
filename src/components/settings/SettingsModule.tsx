@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Globe,
   Database,
   Download,
+  Upload,
+  FileUp,
   Trash2,
   CheckCircle2,
   HardDrive,
@@ -17,10 +19,20 @@ import {
   VolumeX,
   Radio,
   Loader2,
+  AlertCircle,
+  FileCheck2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
-import { db, exportDatabaseBackup, resetAllFarmData, getAppSettings, saveAppSettings } from '../../db';
+import {
+  db,
+  exportDatabaseBackup,
+  importDatabaseBackup,
+  resetAllFarmData,
+  getAppSettings,
+  saveAppSettings,
+  ImportBackupResult,
+} from '../../db';
 import { Farm, LanguageCode, SizeUnit } from '../../types';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 
@@ -36,6 +48,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   onResetComplete,
 }) => {
   const { t, i18n } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Farm profile editing
   const [farmName, setFarmName] = useState(farm.name);
@@ -54,6 +67,17 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<ImportBackupResult | null>(null);
+
+  // Synchronize local form state when farm prop changes (e.g. after restore)
+  useEffect(() => {
+    setFarmName(farm.name);
+    setFarmSize(farm.size);
+    setSizeUnit(farm.sizeUnit);
+    setLocation(farm.location);
+    setCoords(farm.coordinates || null);
+  }, [farm]);
 
   useEffect(() => {
     async function loadVoiceSettings() {
@@ -179,13 +203,72 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       link.download = `FarmPro_Backup_${farm.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
-      setConfirmMsg('Farm records backup file downloaded!');
+      setConfirmMsg('Farm records backup file downloaded successfully!');
     } catch (err) {
       console.error('Backup export failed:', err);
       alert('Backup export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleSelectRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processRestoreFile(file);
+  };
+
+  const processRestoreFile = (file: File) => {
+    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+      alert('Please select a valid JSON backup file (.json).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      if (!content) {
+        alert('Empty or unreadable backup file.');
+        return;
+      }
+
+      const proceed = confirm(
+        `Are you sure you want to restore farm data from "${file.name}"?\n\nThis will import and overwrite current records with the contents of this backup file.`
+      );
+
+      if (!proceed) {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      setIsRestoring(true);
+      try {
+        const result = await importDatabaseBackup(content);
+        if (result.success && result.farm) {
+          setRestoreResult(result);
+          onFarmUpdated(result.farm);
+          setFarmName(result.farm.name);
+          setFarmSize(result.farm.size);
+          setSizeUnit(result.farm.sizeUnit);
+          setLocation(result.farm.location);
+          setCoords(result.farm.coordinates || null);
+        } else {
+          alert(result.message || 'Failed to restore backup.');
+        }
+      } catch (err: any) {
+        console.error('Restore error:', err);
+        alert(`Restore error: ${err?.message || 'Unknown error'}`);
+      } finally {
+        setIsRestoring(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.onerror = () => {
+      alert('Failed to read file.');
+      setIsRestoring(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
   };
 
   const handleResetData = async () => {
@@ -473,30 +556,86 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         </button>
       </form>
 
-      {/* 4. Offline Data & Backup */}
+      {/* 4. Offline Data & Backup / Restore */}
       <section className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
-        <h3 className="text-lg font-black text-farm-navy flex items-center gap-2">
-          <Database className="w-5 h-5 text-emerald-600" />
-          <span>{t('settings.export_backup')}</span>
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-black text-farm-navy flex items-center gap-2">
+            <Database className="w-5 h-5 text-emerald-600" />
+            <span>Farm Data Backup & Restore</span>
+          </h3>
+          <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+            Portable JSON
+          </span>
+        </div>
 
         <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-950">
           <HardDrive className="w-6 h-6 text-emerald-600 shrink-0" />
-          <div className="text-xs sm:text-sm font-bold">
-            All records, crops, inputs, yields, and animal logs are safely stored locally in your device's IndexedDB database.
+          <div className="text-xs sm:text-sm font-semibold">
+            All records, crops, inputs, yields, animals, and tools are stored securely on this device. You can download a portable JSON backup file or restore previously exported data into any Farm Pro installation.
           </div>
         </div>
 
-        <button
-          type="button"
-          id="export-backup-btn"
-          disabled={isExporting}
-          onClick={handleExportBackup}
-          className="w-full min-h-[50px] py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
-        >
-          <Download className="w-5 h-5" />
-          <span>{t('settings.export_btn')}</span>
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Backup Button */}
+          <button
+            type="button"
+            id="export-backup-btn"
+            disabled={isExporting || isRestoring}
+            onClick={handleExportBackup}
+            className="min-h-[50px] py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm sm:text-base rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-xs transition-all"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Exporting Backup...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                <span>{t('settings.export_btn')}</span>
+              </>
+            )}
+          </button>
+
+          {/* Restore Button */}
+          <button
+            type="button"
+            id="restore-backup-btn"
+            disabled={isExporting || isRestoring}
+            onClick={() => fileInputRef.current?.click()}
+            className="min-h-[50px] py-3 px-4 bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold text-sm sm:text-base rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-xs transition-all"
+          >
+            {isRestoring ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Restoring Data...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5" />
+                <span>Restore from JSON File</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Hidden File Input for JSON restore */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".json,application/json"
+          onChange={handleSelectRestoreFile}
+          className="hidden"
+          id="farmpro-restore-file-input"
+        />
+
+        {/* Informative helper banner */}
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5 text-xs text-slate-600 font-medium">
+          <FileUp className="w-4 h-4 text-cyan-600 shrink-0 mt-0.5" />
+          <span>
+            <strong>Device Migration Tip:</strong> To transfer your farm data to a new phone, computer, or tablet, export the backup here, transfer the downloaded <code>.json</code> file, and click <strong>Restore from JSON File</strong> on the target device.
+          </span>
+        </div>
       </section>
 
       {/* 5. Reset Data Section */}
@@ -518,6 +657,45 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           <span>{t('settings.reset_data')}</span>
         </button>
       </section>
+
+      {/* Restore Results Breakdown Modal */}
+      {restoreResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+              <FileCheck2 className="w-8 h-8 stroke-[2.4]" />
+            </div>
+
+            <div>
+              <h3 className="text-2xl font-black text-farm-navy">
+                Data Restored Successfully!
+              </h3>
+              <p className="text-sm font-semibold text-slate-600 mt-1">
+                Farm <strong>"{restoreResult.farm?.name}"</strong> and all records have been loaded.
+              </p>
+            </div>
+
+            {restoreResult.counts && (
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-left grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
+                <div>🌾 Crops: <span className="text-emerald-700 font-black">{restoreResult.counts.crops}</span></div>
+                <div>💧 Inputs: <span className="text-cyan-700 font-black">{restoreResult.counts.inputs}</span></div>
+                <div>⚖️ Yields: <span className="text-amber-700 font-black">{restoreResult.counts.yields}</span></div>
+                <div>🐾 Animals: <span className="text-indigo-700 font-black">{restoreResult.counts.animals}</span></div>
+                <div>💉 Health Logs: <span className="text-purple-700 font-black">{restoreResult.counts.health}</span></div>
+                <div>🔧 Tools: <span className="text-slate-900 font-black">{restoreResult.counts.tools}</span></div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setRestoreResult(null)}
+              className="w-full min-h-[46px] py-2.5 px-4 bg-farm-navy hover:bg-farm-navy-light text-white font-bold text-base rounded-xl cursor-pointer shadow-xs"
+            >
+              Continue to Farm Pro
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Feedback */}
       <ConfirmationModal

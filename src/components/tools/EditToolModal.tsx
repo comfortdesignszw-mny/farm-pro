@@ -1,21 +1,23 @@
-import React, { useState } from 'react';
-import { X, Wrench, CheckCircle2, DollarSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Wrench, CheckCircle2, DollarSign, Tag, Calendar, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../db';
 import { Tool, ToolCategory, ToolCondition, Farm } from '../../types';
 import { PhotoCapture } from '../common/PhotoCapture';
 import { VoiceInputButton } from '../common/VoiceInputButton';
 
-interface AddToolModalProps {
+interface EditToolModalProps {
   isOpen: boolean;
   farm: Farm;
+  tool: Tool | null;
   onClose: () => void;
-  onSaved: (tool: Tool) => void;
+  onSaved: (updatedTool: Tool) => void;
 }
 
-export const AddToolModal: React.FC<AddToolModalProps> = ({
+export const EditToolModal: React.FC<EditToolModalProps> = ({
   isOpen,
   farm,
+  tool,
   onClose,
   onSaved,
 }) => {
@@ -29,14 +31,26 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (tool) {
+      setName(tool.name);
+      setCategory(tool.category);
+      setCondition(tool.condition);
+      setPurchaseDate(tool.purchaseDate || new Date().toISOString().split('T')[0]);
+      setCost(tool.cost || 0);
+      setSerialNumber(tool.serialNumber || '');
+      setPhoto(tool.photo || null);
+      setNotes(tool.notes || '');
+    }
+  }, [tool]);
+
+  if (!isOpen || !tool) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newTool: Tool = {
-      id: 'tool_' + Date.now(),
-      farmId: farm.id,
+    const updated: Tool = {
+      ...tool,
       name: name.trim() || 'Farm Tool',
       category,
       condition,
@@ -45,14 +59,11 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
       serialNumber: serialNumber.trim() || undefined,
       photo: photo || undefined,
       notes: notes.trim(),
-      createdAt: Date.now(),
     };
 
-    await db.tools.add(newTool);
-    onSaved(newTool);
+    await db.tools.put(updated);
+    onSaved(updated);
   };
-
-  const quickToolNames = ['Hoe / Ikhuba', 'Shovel / Spade', 'Knapsack Sprayer', 'Water Pump', 'Plough / Gejo', 'Wheelbarrow'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
@@ -62,9 +73,14 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
             <div className="w-10 h-10 rounded-xl bg-farm-cyan/20 text-farm-navy flex items-center justify-center">
               <Wrench className="w-6 h-6 stroke-[2.2]" />
             </div>
-            <h2 className="text-2xl font-bold text-farm-navy">
-              {t('tools.add_tool_btn')}
-            </h2>
+            <div>
+              <h2 className="text-2xl font-bold text-farm-navy">
+                Edit Equipment / Tool
+              </h2>
+              <p className="text-xs text-slate-500 font-semibold">
+                Update status, condition, and valuation
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -76,27 +92,11 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Quick tool suggestions */}
+          {/* Tool Name */}
           <div>
             <label className="block text-base font-bold text-farm-navy mb-1.5">
-              1. {t('tools.tool_name')}
+              Tool / Equipment Name
             </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {quickToolNames.map((toolName) => (
-                <button
-                  key={toolName}
-                  type="button"
-                  onClick={() => setName(toolName)}
-                  className={`min-h-[36px] px-3 py-1 rounded-lg text-sm font-bold transition-all cursor-pointer ${
-                    name === toolName
-                      ? 'bg-farm-navy text-farm-cyan'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {toolName}
-                </button>
-              ))}
-            </div>
             <input
               type="text"
               required
@@ -111,7 +111,7 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                2. {t('tools.category')}
+                Category
               </label>
               <select
                 value={category}
@@ -128,7 +128,7 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                3. {t('tools.condition')}
+                Condition
               </label>
               <select
                 value={condition}
@@ -147,7 +147,7 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                {t('tools.purchase_date')}
+                Purchase / Acquisition Date
               </label>
               <input
                 type="date"
@@ -158,71 +158,87 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Cost ($)
+                Estimated / Purchase Cost ($)
               </label>
               <div className="relative">
                 <input
                   type="number"
                   min="0"
-                  value={cost}
-                  onChange={(e) => setCost(Number(e.target.value))}
-                  className="w-full min-h-[48px] pl-10 pr-3 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                  step="0.5"
+                  value={cost || ''}
+                  onChange={(e) => setCost(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full min-h-[48px] pl-10 pr-4 py-2.5 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
                 />
                 <DollarSign className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" />
               </div>
             </div>
           </div>
 
-          {/* Serial Number / ID */}
+          {/* Serial Number / Identifier */}
           <div>
             <label className="block text-sm font-bold text-farm-navy mb-1.5">
-              Serial Number / Asset Tag (Optional)
+              Serial Number / Tag ID (Optional)
             </label>
-            <input
-              type="text"
-              value={serialNumber}
-              onChange={(e) => setSerialNumber(e.target.value)}
-              placeholder="e.g. SN-8829 / Tag #12"
-              className="w-full min-h-[44px] px-3.5 py-2 text-sm font-medium rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder="e.g. SN-9821 / Engine #440"
+                className="w-full min-h-[44px] pl-10 pr-4 py-2 text-sm font-medium rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+              />
+              <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            </div>
           </div>
 
           {/* Photo */}
           <div>
-            <label className="block text-base font-bold text-farm-navy mb-1.5">
-              Tool Photo {t('common.optional')}
+            <label className="block text-sm font-bold text-farm-navy mb-1.5">
+              Tool Photo
             </label>
-            <PhotoCapture photoBlob={photo} onPhotoSelected={setPhoto} label="Add Photo of Equipment" />
-          </div>
-
-          {/* Notes */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-base font-bold text-farm-navy">
-                {t('common.notes')} {t('common.optional')}
-              </label>
-              <VoiceInputButton
-                onTranscript={(text) => setNotes((prev) => (prev ? `${prev} ${text}` : text))}
-                label="Voice Note"
-              />
-            </div>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Stored in shed, extra nozzle attached"
-              className="w-full min-h-[46px] px-3.5 py-2 text-base rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-medium"
+            <PhotoCapture
+              photo={photo}
+              onPhotoChange={setPhoto}
+              label="Capture or Upload Tool Photo"
             />
           </div>
 
-          <div className="pt-2">
+          {/* Notes with Voice Input */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-bold text-farm-navy">
+                Maintenance Notes / Remarks
+              </label>
+              <VoiceInputButton
+                onTranscript={(text) => setNotes((prev) => (prev ? `${prev} ${text}` : text))}
+                language="en"
+              />
+            </div>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Needs new washer seal, sharp blade, serviced on 12 May"
+              className="w-full p-3 rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none text-sm font-medium"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 min-h-[48px] py-2.5 px-4 rounded-xl border-2 border-slate-300 font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              id="save-tool-btn"
-              className="w-full min-h-[56px] py-4 px-6 bg-farm-navy hover:bg-farm-navy-light active:scale-[0.98] text-white font-bold text-xl rounded-xl flex items-center justify-center gap-3 transition-all shadow-md cursor-pointer"
+              className="flex-1 min-h-[48px] py-2.5 px-4 bg-farm-navy hover:bg-farm-navy-light text-white font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
-              <CheckCircle2 className="w-6 h-6 text-farm-cyan" />
-              <span>{t('common.save')} Tool</span>
+              <CheckCircle2 className="w-5 h-5 text-farm-cyan" />
+              <span>Save Changes</span>
             </button>
           </div>
         </form>

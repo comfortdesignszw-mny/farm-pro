@@ -29,6 +29,10 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
   const [variety, setVariety] = useState('');
   const [fieldName, setFieldName] = useState('Field 1');
   const [fieldSize, setFieldSize] = useState<number>(farm.size || 1);
+  const [expectedYieldQuantity, setExpectedYieldQuantity] = useState<number | ''>('');
+  const [expectedYieldUnit, setExpectedYieldUnit] = useState<string>('bags_50kg');
+  const [sellingPricePerUnit, setSellingPricePerUnit] = useState<number | ''>('');
+  const [sellingPriceUnit, setSellingPriceUnit] = useState<string>('bags_50kg');
   const [plantingDate, setPlantingDate] = useState(new Date().toISOString().split('T')[0]);
   const [harvestDateExpected, setHarvestDateExpected] = useState(() => {
     const d = new Date();
@@ -98,6 +102,10 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
       status: 'active',
       photo: photo || undefined,
       fieldSize: Number(fieldSize) || 1,
+      expectedYieldQuantity: expectedYieldQuantity !== '' ? Number(expectedYieldQuantity) : undefined,
+      expectedYieldUnit: expectedYieldUnit || undefined,
+      sellingPricePerUnit: sellingPricePerUnit !== '' ? Number(sellingPricePerUnit) : undefined,
+      sellingPriceUnit: sellingPriceUnit || undefined,
       notes: notes.trim(),
       createdAt: Date.now(),
     };
@@ -241,6 +249,96 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
                 className="w-full min-h-[48px] px-4 py-2.5 text-base font-semibold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
               />
             </div>
+          </div>
+
+          {/* Selling Price & Expected Yield Estimation */}
+          <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black text-emerald-950 flex items-center gap-1.5">
+                💰 Market Price & Revenue Target (Optional)
+              </span>
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                Estimator
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Selling Price */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Selling Price ($ per unit)
+                </label>
+                <div className="flex gap-1.5">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-sm">$</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={sellingPricePerUnit}
+                      onChange={(e) => setSellingPricePerUnit(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="e.g. 25.00"
+                      className="w-full min-h-[42px] pl-7 pr-2.5 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white"
+                    />
+                  </div>
+                  <select
+                    value={sellingPriceUnit}
+                    onChange={(e) => setSellingPriceUnit(e.target.value)}
+                    className="w-28 text-xs font-bold rounded-xl border-2 border-slate-300 bg-white px-2 py-1.5 outline-none"
+                  >
+                    <option value="bags_50kg">/ 50kg bag</option>
+                    <option value="tonnes">/ Tonne</option>
+                    <option value="kg">/ kg</option>
+                    <option value="crates">/ Crate</option>
+                    <option value="buckets_20L">/ 20L Bucket</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Target Yield */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Expected Total Harvest
+                </label>
+                <div className="flex gap-1.5">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={expectedYieldQuantity}
+                    onChange={(e) => setExpectedYieldQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="e.g. 60"
+                    className="w-full min-h-[42px] px-3 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white"
+                  />
+                  <select
+                    value={expectedYieldUnit}
+                    onChange={(e) => setExpectedYieldUnit(e.target.value)}
+                    className="w-28 text-xs font-bold rounded-xl border-2 border-slate-300 bg-white px-2 py-1.5 outline-none"
+                  >
+                    <option value="bags_50kg">50kg bags</option>
+                    <option value="tonnes">Tonnes</option>
+                    <option value="kg">kg</option>
+                    <option value="crates">Crates</option>
+                    <option value="buckets_20L">Buckets</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Estimated revenue summary */}
+            {typeof sellingPricePerUnit === 'number' &&
+              sellingPricePerUnit > 0 &&
+              typeof expectedYieldQuantity === 'number' &&
+              expectedYieldQuantity > 0 && (
+                <div className="p-2.5 rounded-xl bg-white border border-emerald-300 flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-900">
+                    Est. Potential Revenue:
+                  </span>
+                  <span className="text-base font-black text-emerald-800">
+                    ${(sellingPricePerUnit * expectedYieldQuantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
           </div>
 
           {/* Field Photo */}

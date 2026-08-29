@@ -53,6 +53,10 @@ export interface CropCycle {
   status: CropStatus;
   photo?: Blob;
   fieldSize?: number;
+  expectedYieldQuantity?: number;
+  expectedYieldUnit?: string;
+  sellingPricePerUnit?: number;
+  sellingPriceUnit?: string;
   notes?: string;
   createdAt: number;
 }
@@ -80,6 +84,8 @@ export interface YieldRecord {
   quantity: number;
   unit: string;
   quantityPerHectare: number;
+  sellingPricePerUnit?: number;
+  totalEstimatedValue?: number;
   date: string;
   photo?: Blob;
   notes?: string;
@@ -109,6 +115,7 @@ export interface Animal {
   acquisitionDate: string;
   acquisitionMethod: AcquisitionMethod;
   cost?: number;
+  sellingPricePerHead?: number;
   photo?: Blob;
   status: AnimalStatus;
   tagOrName?: string;
@@ -151,6 +158,8 @@ export interface AnimalProductionRecord {
   productType: ProductionProductType;
   quantity: number;
   unit: string;
+  sellingPricePerUnit?: number;
+  totalEstimatedValue?: number;
   date: string;
   photo?: Blob;
   notes?: string;
@@ -168,6 +177,7 @@ export interface Tool {
   condition: ToolCondition;
   purchaseDate: string;
   cost: number;
+  serialNumber?: string;
   photo?: Blob;
   notes?: string;
   createdAt: number;

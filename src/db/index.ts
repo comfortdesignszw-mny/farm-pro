@@ -117,7 +117,8 @@ export async function exportDatabaseBackup(): Promise<string> {
     animalFeedRecords,
     animalProductionRecords,
     tools,
-    chatMessages
+    chatMessages,
+    settings,
   ] = await Promise.all([
     db.farms.toArray(),
     db.fields.toArray(),
@@ -130,12 +131,15 @@ export async function exportDatabaseBackup(): Promise<string> {
     db.animalProductionRecords.toArray(),
     db.tools.toArray(),
     db.chatMessages.toArray(),
+    getAppSettings(),
   ]);
 
   // Strip blobs to ensure clean portable JSON backup
   const cleanData = {
+    appName: 'FarmPro',
     exportedAt: new Date().toISOString(),
     version: 1,
+    settings,
     farms,
     fields,
     cropCycles: cropCycles.map(c => ({ ...c, photo: undefined })),
@@ -150,6 +154,168 @@ export async function exportDatabaseBackup(): Promise<string> {
   };
 
   return JSON.stringify(cleanData, null, 2);
+}
+
+export interface ImportBackupResult {
+  success: boolean;
+  message: string;
+  farm?: Farm;
+  counts?: {
+    farms: number;
+    fields: number;
+    crops: number;
+    inputs: number;
+    yields: number;
+    animals: number;
+    health: number;
+    feeds: number;
+    productions: number;
+    tools: number;
+    messages: number;
+  };
+}
+
+/**
+ * Import and restore a JSON database backup into IndexedDB.
+ */
+export async function importDatabaseBackup(jsonString: string): Promise<ImportBackupResult> {
+  try {
+    const data = JSON.parse(jsonString);
+
+    if (!data || typeof data !== 'object') {
+      return { success: false, message: 'Invalid backup file format.' };
+    }
+
+    // Extract collections with fallbacks for single objects or alternative keys
+    const rawFarms: Farm[] = Array.isArray(data.farms)
+      ? data.farms
+      : data.farm
+      ? [data.farm]
+      : [];
+
+    const rawFields: Field[] = Array.isArray(data.fields) ? data.fields : [];
+    const rawCrops: CropCycle[] = Array.isArray(data.cropCycles)
+      ? data.cropCycles
+      : Array.isArray(data.crops)
+      ? data.crops
+      : [];
+    const rawInputs: InputRecord[] = Array.isArray(data.inputRecords)
+      ? data.inputRecords
+      : Array.isArray(data.inputs)
+      ? data.inputs
+      : [];
+    const rawYields: YieldRecord[] = Array.isArray(data.yieldRecords)
+      ? data.yieldRecords
+      : Array.isArray(data.yields)
+      ? data.yields
+      : [];
+    const rawAnimals: Animal[] = Array.isArray(data.animals) ? data.animals : [];
+    const rawHealth: AnimalHealthRecord[] = Array.isArray(data.animalHealthRecords)
+      ? data.animalHealthRecords
+      : Array.isArray(data.healthRecords)
+      ? data.healthRecords
+      : [];
+    const rawFeeds: AnimalFeedRecord[] = Array.isArray(data.animalFeedRecords)
+      ? data.animalFeedRecords
+      : [];
+    const rawProductions: AnimalProductionRecord[] = Array.isArray(data.animalProductionRecords)
+      ? data.animalProductionRecords
+      : [];
+    const rawTools: Tool[] = Array.isArray(data.tools) ? data.tools : [];
+    const rawMessages: ChatMessage[] = Array.isArray(data.chatMessages)
+      ? data.chatMessages
+      : [];
+
+    // Verify there is at least something to restore
+    if (
+      rawFarms.length === 0 &&
+      rawCrops.length === 0 &&
+      rawAnimals.length === 0 &&
+      rawTools.length === 0
+    ) {
+      return {
+        success: false,
+        message: 'No recognizable Farm Pro records found in this backup file.',
+      };
+    }
+
+    // Perform atomic transaction replacement
+    await db.transaction(
+      'rw',
+      [
+        db.farms,
+        db.fields,
+        db.cropCycles,
+        db.inputRecords,
+        db.yieldRecords,
+        db.animals,
+        db.animalHealthRecords,
+        db.animalFeedRecords,
+        db.animalProductionRecords,
+        db.tools,
+        db.chatMessages,
+      ],
+      async () => {
+        await db.farms.clear();
+        await db.fields.clear();
+        await db.cropCycles.clear();
+        await db.inputRecords.clear();
+        await db.yieldRecords.clear();
+        await db.animals.clear();
+        await db.animalHealthRecords.clear();
+        await db.animalFeedRecords.clear();
+        await db.animalProductionRecords.clear();
+        await db.tools.clear();
+        await db.chatMessages.clear();
+
+        if (rawFarms.length > 0) await db.farms.bulkPut(rawFarms);
+        if (rawFields.length > 0) await db.fields.bulkPut(rawFields);
+        if (rawCrops.length > 0) await db.cropCycles.bulkPut(rawCrops);
+        if (rawInputs.length > 0) await db.inputRecords.bulkPut(rawInputs);
+        if (rawYields.length > 0) await db.yieldRecords.bulkPut(rawYields);
+        if (rawAnimals.length > 0) await db.animals.bulkPut(rawAnimals);
+        if (rawHealth.length > 0) await db.animalHealthRecords.bulkPut(rawHealth);
+        if (rawFeeds.length > 0) await db.animalFeedRecords.bulkPut(rawFeeds);
+        if (rawProductions.length > 0) await db.animalProductionRecords.bulkPut(rawProductions);
+        if (rawTools.length > 0) await db.tools.bulkPut(rawTools);
+        if (rawMessages.length > 0) await db.chatMessages.bulkPut(rawMessages);
+      }
+    );
+
+    // Restore app settings if present
+    if (data.settings && typeof data.settings === 'object') {
+      await saveAppSettings(data.settings);
+    }
+    localStorage.setItem('farmpro_onboarding_completed', 'true');
+
+    // Retrieve the newly restored active farm
+    const restoredFarm = (await getCurrentFarm()) || rawFarms[0];
+
+    return {
+      success: true,
+      message: 'Farm data restored successfully!',
+      farm: restoredFarm,
+      counts: {
+        farms: rawFarms.length,
+        fields: rawFields.length,
+        crops: rawCrops.length,
+        inputs: rawInputs.length,
+        yields: rawYields.length,
+        animals: rawAnimals.length,
+        health: rawHealth.length,
+        feeds: rawFeeds.length,
+        productions: rawProductions.length,
+        tools: rawTools.length,
+        messages: rawMessages.length,
+      },
+    };
+  } catch (err: any) {
+    console.error('Failed to import database backup:', err);
+    return {
+      success: false,
+      message: `Failed to restore database: ${err?.message || 'Unknown error'}`,
+    };
+  }
 }
 
 const SETTINGS_KEY = 'farmpro_app_settings';

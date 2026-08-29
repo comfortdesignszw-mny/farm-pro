@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Sprout, Check, ArrowRight, MapPin, Globe, Sparkles } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Sprout, Check, ArrowRight, MapPin, Globe, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
-import { db } from '../../db';
+import { db, importDatabaseBackup } from '../../db';
 import { Farm, LanguageCode, SizeUnit } from '../../types';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 
@@ -14,6 +14,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
   const { t, i18n } = useTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedLang, setSelectedLang] = useState<LanguageCode>((i18n.language as LanguageCode) || 'en');
+  const [isRestoring, setIsRestoring] = useState(false);
+  const restoreFileRef = useRef<HTMLInputElement | null>(null);
 
   // Farm Form State (max 4 fields)
   const [farmName, setFarmName] = useState('My Farm');
@@ -42,6 +44,35 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     } else {
       setCropsSpecialized([...cropsSpecialized, crop]);
     }
+  };
+
+  const handleRestoreBackupFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      if (!content) {
+        alert('Empty backup file.');
+        return;
+      }
+
+      setIsRestoring(true);
+      try {
+        const result = await importDatabaseBackup(content);
+        if (result.success && result.farm) {
+          onComplete(result.farm);
+        } else {
+          alert(result.message || 'Failed to restore backup.');
+        }
+      } catch (err: any) {
+        alert(`Restore error: ${err?.message || 'Unknown error'}`);
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleSaveFarm = async (e: React.FormEvent) => {
@@ -308,6 +339,35 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
             <Sparkles className="w-6 h-6" />
             <span>{t('onboarding.start_farming')}</span>
           </button>
+
+          <div className="pt-2 text-center">
+            <input
+              type="file"
+              ref={restoreFileRef}
+              accept=".json,application/json"
+              onChange={handleRestoreBackupFile}
+              className="hidden"
+              id="onboarding-restore-input"
+            />
+            <button
+              type="button"
+              disabled={isRestoring}
+              onClick={() => restoreFileRef.current?.click()}
+              className="text-sm font-bold text-farm-navy hover:text-cyan-700 underline inline-flex items-center gap-1.5 cursor-pointer py-1"
+            >
+              {isRestoring ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-600" />
+                  <span>Restoring Farm Backup...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 text-cyan-600" />
+                  <span>Have a previous backup? Restore from JSON file</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
       )}
 

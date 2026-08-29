@@ -1,4 +1,4 @@
-import { CropCycle, Animal, Farm } from '../types';
+import { CropCycle, Animal, Farm, Tool } from '../types';
 
 export interface ShareResult {
   success: boolean;
@@ -111,6 +111,75 @@ export async function shareAnimalDetails(animal: Animal, farm: Farm): Promise<Sh
       success: false,
       type: 'failed',
       message: 'Could not share details automatically.',
+    };
+  }
+}
+
+export async function shareToolDetails(tool: Tool, farm: Farm): Promise<ShareResult> {
+  const cleanName = tool.name.replace(/\s+/g, '');
+  const cleanCat = tool.category.replace(/\s+/g, '');
+  const cleanFarm = farm.name.replace(/\s+/g, '');
+
+  const categoryLabels: Record<string, string> = {
+    hand_tool: 'Hand Tool',
+    irrigation: 'Irrigation & Pumping',
+    machinery: 'Tractor & Machinery',
+    storage: 'Storage & Post-Harvest',
+    livestock: 'Livestock Equipment',
+    other: 'General Tool',
+  };
+
+  const conditionLabels: Record<string, string> = {
+    excellent: 'Excellent Condition (Like New)',
+    good: 'Good Working Condition',
+    fair: 'Fair (Usable / Functional)',
+    needs_repair: 'Needs Maintenance / Repair',
+  };
+
+  const text = [
+    `🔧 [FARM PRO] Equipment & Tool Record: ${tool.name.toUpperCase()}`,
+    `----------------------------------------`,
+    `📂 Category: ${categoryLabels[tool.category] || tool.category}`,
+    `⚙️ Condition: ${conditionLabels[tool.condition] || tool.condition}`,
+    `📅 Acquired Date: ${tool.purchaseDate || 'Not specified'}`,
+    tool.cost > 0 ? `💰 Purchase / Valued Cost: $${tool.cost.toFixed(2)}` : '',
+    tool.serialNumber ? `🔢 Serial / Tag ID: ${tool.serialNumber}` : '',
+    tool.notes ? `📝 Description / Notes: ${tool.notes}` : '',
+    `🏡 Farm: ${farm.name} • ${farm.location || 'Local District'}`,
+    `----------------------------------------`,
+    `🏷️ Metadata & Tags:`,
+    `#FarmPro #FarmTool #${cleanName} #${cleanCat} #${cleanFarm} #FarmMachinery #SmartFarming #AgriculturalEquipment`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({
+        title: `Farm Pro: ${tool.name} Tool Record`,
+        text: text,
+      });
+      return { success: true, type: 'shared', message: `Tool details shared!` };
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        return { success: false, type: 'failed', message: 'Share dismissed' };
+      }
+    }
+  }
+
+  // Fallback to clipboard
+  try {
+    await navigator.clipboard.writeText(text);
+    return {
+      success: true,
+      type: 'copied',
+      message: 'Tool details & meta tags copied to clipboard!',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      type: 'failed',
+      message: 'Could not share tool details automatically.',
     };
   }
 }
