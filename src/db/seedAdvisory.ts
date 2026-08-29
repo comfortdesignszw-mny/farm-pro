@@ -570,6 +570,105 @@ export const SEED_ADVISORY_DATA: Omit<AdvisoryItem, 'id'>[] = [
     ],
     imageUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=60',
     keywords: ['crop', 'crops', 'farming', 'rotation', 'soil', 'fertilizer', 'agronomy', 'zvirimwa', 'izitshalo']
+  },
+
+  // 22. EMERGENCY DIAGNOSTIC & VACCINATION GUIDES (Offline Decision Support)
+  {
+    topic: 'Fall Armyworm Diagnosis',
+    category: 'crop',
+    language: 'en',
+    title: 'Fall Armyworm (FAW) Diagnosis & Control',
+    summary: 'Caterpillars boring into maize funnels causing ragged leaf holes and sawdust-like frass.',
+    bulletPoints: [
+      'Observation: Ragged shot-holes in whorl leaves with moist sawdust-like caterpillar droppings.',
+      'Immediate Action: Scout 20 consecutive plants in 5 spots; treat if >10% of vegetative crop shows fresh damage.',
+      'Organic / Cultural: Put fine dry wood ash or dry sand directly into the funnel whorl of each plant; spray aqueous Neem leaf extract.',
+      'Chemical Control: Emamectin Benzoate 5% SG (5g/20L water) or Chlorantraniliprole in early morning or late afternoon when larvae are active.',
+      'Safety: Wear protective gloves and mask; observe 14-day withholding period before green mealie harvest.'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=800&auto=format&fit=crop&q=60',
+    keywords: ['armyworm', 'caterpillar', 'maize', 'corn', 'funnel', 'holes', 'sawdust', 'mupfukidzi', 'chibage', 'emamectin', 'ash']
+  },
+  {
+    topic: 'Fall Armyworm Diagnosis',
+    category: 'crop',
+    language: 'sn',
+    title: 'Kurapa Mupfukidzi weChibage (Fall Armyworm)',
+    summary: 'Makonye anodya mukati memwoyo wechibage achisiya madonhwe akaita semadota kana mashavhings.',
+    bulletPoints: [
+      'Zvinoonekwa: Mashizha akabooka maburi makuru ane tsvina yemakonye mukati memwoyo.',
+      'Chirango chekukurumidza: Isa madota akachena kana jecha rakaoma mumwoyo wechibage chimwe nechimwe.',
+      'Mushonga weChivanhu: Muto weNeem unovava unodzinga makonye.',
+      'Mushonga weChirungu: Emamectin Benzoate kana Belt/Ampligo; pfapfaidza mangwanani-ngwanani kana zuva ravira.',
+      'Chenjedzo: Pfekai magirovhosi nemasiki; mirai mazuva 14 musati madya chibage chinyoro.'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=800&auto=format&fit=crop&q=60',
+    keywords: ['mupfukidzi', 'makonye', 'chibage', 'madota', 'mwoyo', 'armyworm', 'fetereza']
+  },
+  {
+    topic: 'Tomato Blight Diagnosis',
+    category: 'crop',
+    language: 'en',
+    title: 'Tomato Late Blight & Early Blight Diagnosis',
+    summary: 'Dark water-soaked brown rotting patches on tomato leaves, stems, and fruits during wet or humid weather.',
+    bulletPoints: [
+      'Observation: Rapidly spreading dark brown lesions with pale green margins on leaves and brown sunken rot on fruits.',
+      'Immediate Action: Prune off and burn severely infected lower leaves immediately; never leave diseased trash in the field.',
+      'Cultural Control: Stop overhead irrigation (water at root base only); increase spacing for air circulation; stake plants.',
+      'Chemical Spray: Mancozeb 80% WP (preventative) or Copper Oxychloride 85% WP; use Metalaxyl + Mancozeb if already established.',
+      'Safety: Respect 7-day withholding harvest interval after spraying fungicides.'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?w=800&auto=format&fit=crop&q=60',
+    keywords: ['blight', 'tomato', 'matomatisi', 'brown', 'spots', 'rot', 'mancozeb', 'copper', 'leaves', 'dying']
+  },
+  {
+    topic: 'Newcastle Disease Diagnosis',
+    category: 'species',
+    language: 'en',
+    title: 'Newcastle Disease (NCD) in Poultry',
+    summary: 'Highly contagious viral disease causing twisted necks, respiratory gasping, green watery diarrhea, and sudden high flock mortality.',
+    bulletPoints: [
+      'Observation: Greenish watery droppings, coughing/gasping, torticollis (twisted neck/circling), sudden flock death.',
+      'Emergency Action: IMMEDIATELY ISOLATE all healthy birds from sick ones; disinfect footbaths; bury or incinerate dead birds.',
+      'Escalation: Escalate to local AGRITEX / Veterinary Department immediately — highly contagious notifiable disease.',
+      'Treatment: No chemical cure for viral NCD. Provide broad-spectrum antibiotics (Oxytetracycline soluble) + multivitamins to prevent secondary bacterial infection in survivors.',
+      'Prevention: Vaccinate Day 1 (Hitchner B1 eye drop), Week 3 (LaSota drinking water), and repeat booster every 3 months.'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=800&auto=format&fit=crop&q=60',
+    keywords: ['newcastle', 'chicken', 'twisted neck', 'green droppings', 'dying', 'huku', 'chirwere', 'lasota', 'vaccine', 'mortality']
+  },
+  {
+    topic: 'Newcastle Disease Diagnosis',
+    category: 'species',
+    language: 'sn',
+    title: 'Chirwere cheNewcastle muHuku',
+    summary: 'Chirwere chinopararira nekukurumidza chinonyonganisa mutsipa, manyoka akasvibira, nekufa kwechimbichimbi.',
+    bulletPoints: [
+      'Zvinoonekwa: Mutsipa unomonyoroka, huku inokoshora, manyoka egirinhi, nekufa kwechimbichimbi.',
+      'Kukurumidza Kuita: Putsanisa huku dzinorwara nedzisiri kurwara pakarepo; viga dzafa.',
+      'Kutaura neAGRITEX: Chizivisai mudhumeni wekurima kana veVeterinary Services nekukurumidza.',
+      'Kurapa: Hakuna mushonga unorapa hutachiona uhu, asi ipai mavhitamini neOxytetracycline mumvura kuchengetedza dzichiri mhenyu.',
+      'Nhomba: Nhomba yeLaSota mumvura pamavhiki matatu uye dzokororai mushure memwedzi mitatu.'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=800&auto=format&fit=crop&q=60',
+    keywords: ['newcastle', 'huku', 'mutsipa', 'manyoka', 'chirwere', 'lasota', 'nhomba', 'chitsvuku']
+  },
+  {
+    topic: 'Broiler 6-Week Vaccine Protocol',
+    category: 'species',
+    language: 'en',
+    title: 'Standard 6-Week Broiler Vaccination & Health Protocol',
+    summary: 'Essential staged schedule to guarantee 95%+ livability and rapid growth.',
+    bulletPoints: [
+      'Day 1–3: Stress pack / Multivitamins + Glucose in clean drinking water; warmth at 33°C.',
+      'Day 7: Gumboro (Infectious Bursal Disease - IBD) 1st dose in dechlorinated water.',
+      'Day 14: Newcastle Disease (LaSota) vaccine in drinking water with skim milk stabilizer.',
+      'Day 18–21: Gumboro (IBD) 2nd booster dose in drinking water.',
+      'Week 4–5: Preventative deworming or Coccidiostat flush (Amprolium / ESB3) if bedding becomes wet.',
+      'Week 6–7: Clean fresh water only; observe withdrawal period before marketing/slaughter.'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=800&auto=format&fit=crop&q=60',
+    keywords: ['vaccination', 'broiler', 'schedule', 'gumboro', 'newcastle', 'lasota', 'vitamins', 'protocol', 'chickens']
   }
 ];
 

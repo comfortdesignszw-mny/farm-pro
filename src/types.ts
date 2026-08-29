@@ -173,6 +173,30 @@ export interface Tool {
   createdAt: number;
 }
 
+export type AdvisorIntent =
+  | 'crop_advisory'
+  | 'animal_advisory'
+  | 'disease_pest_diagnosis'
+  | 'vaccination_treatment_schedule'
+  | 'record_help'
+  | 'general_question'
+  | 'unclear';
+
+export interface DiagnosticData {
+  intent?: AdvisorIntent;
+  language?: LanguageCode;
+  observation?: string;
+  diagnosis?: {
+    most_likely?: string | null;
+    other_possibilities?: string[];
+    confidence?: 'high' | 'medium' | 'low';
+  };
+  recommendations?: string[];
+  escalate_to_professional?: boolean;
+  follow_up_question?: string | null;
+  reply_text?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -183,6 +207,7 @@ export interface ChatMessage {
   synced: boolean;
   isOfflineGenerated?: boolean;
   topic?: string;
+  diagnosticData?: DiagnosticData;
 }
 
 export interface AdvisoryItem {
