@@ -14,8 +14,10 @@ import {
   ChatMessage,
   AdvisoryItem,
   AppSettings,
+  OfficerContact,
 } from '../types';
 import { SEED_ADVISORY_DATA } from './seedAdvisory';
+import { SEED_OFFICER_CONTACTS } from './seedOfficers';
 
 export class FarmProDatabase extends Dexie {
   farms!: Table<Farm, string>;
@@ -31,6 +33,7 @@ export class FarmProDatabase extends Dexie {
   farmTasks!: Table<FarmTask, string>;
   chatMessages!: Table<ChatMessage, string>;
   advisoryCache!: Table<AdvisoryItem, number>;
+  officerContacts!: Table<OfficerContact, string>;
 
   constructor() {
     super('FarmProDB');
@@ -48,6 +51,23 @@ export class FarmProDatabase extends Dexie {
       farmTasks: 'id, farmId, targetType, targetId, category, dueDate, isCompleted, createdAt',
       chatMessages: 'id, role, timestamp, synced',
       advisoryCache: '++id, topic, category, language, *keywords',
+    });
+
+    this.version(2).stores({
+      farms: 'id, name, createdAt',
+      fields: 'id, farmId, name',
+      cropCycles: 'id, farmId, fieldId, cropType, status, plantingDate, createdAt',
+      inputRecords: 'id, cropCycleId, type, date, createdAt',
+      yieldRecords: 'id, cropCycleId, date, createdAt',
+      animals: 'id, farmId, species, status, acquisitionDate, createdAt',
+      animalHealthRecords: 'id, animalId, type, date, nextDueDate, createdAt',
+      animalFeedRecords: 'id, animalId, date, createdAt',
+      animalProductionRecords: 'id, animalId, productType, date, createdAt',
+      tools: 'id, farmId, name, category, condition, createdAt',
+      farmTasks: 'id, farmId, targetType, targetId, category, dueDate, isCompleted, createdAt',
+      chatMessages: 'id, role, timestamp, synced',
+      advisoryCache: '++id, topic, category, language, *keywords',
+      officerContacts: 'id, role, district, province, name, isCustom, createdAt',
     });
   }
 }
@@ -69,6 +89,20 @@ export async function seedAdvisoryCacheIfNeeded(): Promise<void> {
     }
   } catch (err) {
     console.warn('Advisory cache seeding skipped or already initialized:', err);
+  }
+}
+
+/**
+ * Seed initial AGRITEX & Veterinary officer contacts directory if empty
+ */
+export async function seedOfficerContactsIfNeeded(): Promise<void> {
+  try {
+    const count = await db.officerContacts.count();
+    if (count === 0) {
+      await db.officerContacts.bulkPut(SEED_OFFICER_CONTACTS);
+    }
+  } catch (err) {
+    console.warn('Officer contacts seeding skipped or already initialized:', err);
   }
 }
 
@@ -97,7 +131,8 @@ export async function resetAllFarmData(): Promise<void> {
     db.animalProductionRecords,
     db.tools,
     db.farmTasks,
-    db.chatMessages
+    db.chatMessages,
+    db.officerContacts,
   ], async () => {
     await db.farms.clear();
     await db.fields.clear();
@@ -111,7 +146,10 @@ export async function resetAllFarmData(): Promise<void> {
     await db.tools.clear();
     await db.farmTasks.clear();
     await db.chatMessages.clear();
+    await db.officerContacts.clear();
   });
+  // Re-seed official contacts so directory remains available
+  await seedOfficerContactsIfNeeded();
   localStorage.removeItem('farmpro_onboarding_completed');
 }
 
@@ -132,6 +170,7 @@ export async function exportDatabaseBackup(): Promise<string> {
     tools,
     farmTasks,
     chatMessages,
+    officerContacts,
     settings,
   ] = await Promise.all([
     db.farms.toArray(),
@@ -146,6 +185,7 @@ export async function exportDatabaseBackup(): Promise<string> {
     db.tools.toArray(),
     db.farmTasks.toArray(),
     db.chatMessages.toArray(),
+    db.officerContacts.toArray(),
     getAppSettings(),
   ]);
 
@@ -153,7 +193,7 @@ export async function exportDatabaseBackup(): Promise<string> {
   const cleanData = {
     appName: 'FarmPro',
     exportedAt: new Date().toISOString(),
-    version: 1,
+    version: 2,
     settings,
     farms,
     fields,
@@ -167,6 +207,7 @@ export async function exportDatabaseBackup(): Promise<string> {
     tools: tools.map(t => ({ ...t, photo: undefined })),
     farmTasks,
     chatMessages: chatMessages.map(m => ({ ...m, mediaAttachment: undefined })),
+    officerContacts,
   };
 
   return JSON.stringify(cleanData, null, 2);
@@ -189,6 +230,7 @@ export interface ImportBackupResult {
     tools: number;
     tasks?: number;
     messages: number;
+    officers?: number;
   };
 }
 
@@ -243,6 +285,11 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
     const rawMessages: ChatMessage[] = Array.isArray(data.chatMessages)
       ? data.chatMessages
       : [];
+    const rawOfficers: OfficerContact[] = Array.isArray(data.officerContacts)
+      ? data.officerContacts
+      : Array.isArray(data.officers)
+      ? data.officers
+      : [];
 
     // Verify there is at least something to restore
     if (
@@ -274,6 +321,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         db.tools,
         db.farmTasks,
         db.chatMessages,
+        db.officerContacts,
       ],
       async () => {
         await db.farms.clear();
@@ -288,6 +336,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         await db.tools.clear();
         await db.farmTasks.clear();
         await db.chatMessages.clear();
+        await db.officerContacts.clear();
 
         if (rawFarms.length > 0) await db.farms.bulkPut(rawFarms);
         if (rawFields.length > 0) await db.fields.bulkPut(rawFields);
@@ -301,6 +350,11 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         if (rawTools.length > 0) await db.tools.bulkPut(rawTools);
         if (rawTasks.length > 0) await db.farmTasks.bulkPut(rawTasks);
         if (rawMessages.length > 0) await db.chatMessages.bulkPut(rawMessages);
+        if (rawOfficers.length > 0) {
+          await db.officerContacts.bulkPut(rawOfficers);
+        } else {
+          await db.officerContacts.bulkPut(SEED_OFFICER_CONTACTS);
+        }
       }
     );
 
@@ -330,6 +384,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         tools: rawTools.length,
         tasks: rawTasks.length,
         messages: rawMessages.length,
+        officers: rawOfficers.length || SEED_OFFICER_CONTACTS.length,
       },
     };
   } catch (err: any) {

@@ -101,7 +101,9 @@ export type AnimalSpecies =
   | 'Cattle - Beef'
   | 'Cattle - Dairy'
   | 'Goats'
-  | 'Sheep';
+  | 'Sheep'
+  | 'Other'
+  | string;
 
 export type AnimalStatus = 'active' | 'sold' | 'culled' | 'deceased';
 export type AcquisitionMethod = 'bought' | 'born_on_farm' | 'gift' | 'other';
@@ -271,3 +273,30 @@ export interface AppSettings {
   autoSpeakBack?: boolean;
   hasCompletedOnboarding: boolean;
 }
+
+export type OfficerRole =
+  | 'agronomist'           // Agronomist (Mudhumeni weZvirimwa)
+  | 'mudhumeni'            // Mudhumeni / AGRITEX Extension Officer
+  | 'vet_officer'          // Veterinary Officer (Chiremba weMhuka)
+  | 'livestock_specialist' // Livestock & Diptank Specialist
+  | 'agro_dealer'          // Agro-Dealer / Input Supplier
+  | 'other';
+
+export interface OfficerContact {
+  id: string;
+  name: string;
+  role: OfficerRole;
+  roleTitle?: string;
+  phone: string;
+  whatsapp?: string;
+  email?: string;
+  province?: string;
+  district?: string;
+  wardOrArea?: string;
+  address?: string;
+  specialization?: string;
+  isCustom?: boolean;
+  notes?: string;
+  createdAt: number;
+}
+

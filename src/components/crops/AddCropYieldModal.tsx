@@ -109,17 +109,24 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
           {/* Quantity + Unit */}
           <div>
             <label className="block text-base font-bold text-farm-navy mb-1.5">
-              1. {t('crops.quantity')} Harvested
+              1. {t('crops.quantity')} Harvested (Whole Number)
             </label>
             <div className="flex gap-2">
               <input
                 type="number"
-                step="0.5"
-                min="0.1"
+                step="1"
+                min="1"
                 required
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                className="flex-1 min-h-[48px] px-4 py-2.5 text-2xl font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                value={quantity || ''}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setQuantity(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 45"
+                className="flex-1 min-h-[48px] px-4 py-2.5 text-2xl font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
               <select
                 value={unit}
@@ -157,7 +164,7 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
           <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-bold text-farm-navy">
-                Selling Price ($ per {unit === 'bags_50kg' ? '50kg bag' : unit === 'buckets_20L' ? 'bucket' : unit}) {t('common.optional')}
+                Selling Price ($ per {unit === 'bags_50kg' ? '50kg bag' : unit === 'buckets_20L' ? 'bucket' : unit}) (Whole Number) {t('common.optional')}
               </label>
               <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
                 Market Value
@@ -167,12 +174,18 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
               <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-base">$</span>
               <input
                 type="number"
-                step="0.5"
+                step="1"
                 min="0"
                 value={sellingPricePerUnit}
-                onChange={(e) => setSellingPricePerUnit(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="e.g. 24.00"
-                className="w-full min-h-[44px] pl-8 pr-3 py-2 text-base font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white"
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setSellingPricePerUnit(cleaned === '' ? '' : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 24"
+                className="w-full min-h-[44px] pl-8 pr-3 py-2 text-base font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white font-mono"
               />
             </div>
             {totalValue !== undefined && (

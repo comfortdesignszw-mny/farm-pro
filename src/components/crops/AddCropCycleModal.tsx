@@ -210,15 +210,23 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Field Size ({farm.sizeUnit})
+                Field Size ({farm.sizeUnit}) (Whole Number)
               </label>
               <input
                 type="number"
-                step="0.1"
-                min="0.1"
-                value={fieldSize}
-                onChange={(e) => setFieldSize(Number(e.target.value))}
-                className="w-full min-h-[48px] px-4 py-2.5 text-lg rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-medium"
+                step="1"
+                min="1"
+                required
+                value={fieldSize || ''}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setFieldSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 2, 5, 10"
+                className="w-full min-h-[48px] px-4 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
             </div>
           </div>
@@ -266,19 +274,25 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
               {/* Selling Price */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Selling Price ($ per unit)
+                  Selling Price ($ per unit) (Whole Number)
                 </label>
                 <div className="flex gap-1.5">
                   <div className="relative flex-1">
                     <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-sm">$</span>
                     <input
                       type="number"
-                      step="0.5"
+                      step="1"
                       min="0"
                       value={sellingPricePerUnit}
-                      onChange={(e) => setSellingPricePerUnit(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="e.g. 25.00"
-                      className="w-full min-h-[42px] pl-7 pr-2.5 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white"
+                      onKeyDown={(e) => {
+                        if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                      }}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                        setSellingPricePerUnit(cleaned === '' ? '' : parseInt(cleaned, 10));
+                      }}
+                      placeholder="e.g. 25"
+                      className="w-full min-h-[42px] pl-7 pr-2.5 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white font-mono"
                     />
                   </div>
                   <select
@@ -298,7 +312,7 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
               {/* Target Yield */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Expected Total Harvest
+                  Expected Total Harvest (Whole Number)
                 </label>
                 <div className="flex gap-1.5">
                   <input
@@ -306,9 +320,15 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
                     step="1"
                     min="0"
                     value={expectedYieldQuantity}
-                    onChange={(e) => setExpectedYieldQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                    }}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                      setExpectedYieldQuantity(cleaned === '' ? '' : parseInt(cleaned, 10));
+                    }}
                     placeholder="e.g. 60"
-                    className="w-full min-h-[42px] px-3 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white"
+                    className="w-full min-h-[42px] px-3 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white font-mono"
                   />
                   <select
                     value={expectedYieldUnit}

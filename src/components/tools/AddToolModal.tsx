@@ -158,15 +158,23 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Cost ($)
+                Cost ($) (Whole Number)
               </label>
               <div className="relative">
                 <input
                   type="number"
+                  step="1"
                   min="0"
-                  value={cost}
-                  onChange={(e) => setCost(Number(e.target.value))}
-                  className="w-full min-h-[48px] pl-10 pr-3 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                  value={cost || ''}
+                  onKeyDown={(e) => {
+                    if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                  }}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                    setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
+                  }}
+                  placeholder="e.g. 45"
+                  className="w-full min-h-[48px] pl-10 pr-3 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
                 />
                 <DollarSign className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" />
               </div>

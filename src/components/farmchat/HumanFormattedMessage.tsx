@@ -6,17 +6,19 @@ interface HumanFormattedMessageProps {
 }
 
 /**
- * Strips raw markdown syntax characters (like **, ##, __, `, [1])
- * while preserving readable text.
+ * Strips raw markdown syntax characters (like **, ##, __, `, [1], ***)
+ * while preserving clean, readable text.
  */
 export function sanitizeRawMarkdown(text: string): string {
   if (!text) return '';
   return text
     .replace(/\[\d+\]/g, '') // strip citation numbers [1], [2]
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // strip markdown links
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // strip markdown links [title](url) -> title
     .replace(/^#{1,6}\s+/gm, '') // strip header hashes
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // strip bold asterisks
-    .replace(/\*([^*]+)\*/g, '$1') // strip italic asterisks
+    .replace(/\*\*\*([^*]+)\*\*\*/g, '$1') // bold italic ***
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // strip bold asterisks **
+    .replace(/\*([^*]+)\*/g, '$1') // strip italic asterisks *
+    .replace(/___([^_]+)___/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
     .replace(/_([^_]+)_/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
@@ -28,14 +30,15 @@ export function sanitizeRawMarkdown(text: string): string {
  * Parses inline text and renders emphasized sections / key phrases cleanly
  */
 function renderInlineText(rawText: string, isUser: boolean): React.ReactNode {
-  // Check if text has a lead-in label ending in a colon (e.g. "Immediate Action: ..." or "Dosage: ...")
-  const colonMatch = rawText.match(/^([A-Za-z0-9\s/&—–\-]+:)\s*(.*)$/);
-  if (colonMatch && colonMatch[1].length < 35 && !rawText.startsWith('http')) {
-    const label = sanitizeRawMarkdown(colonMatch[1]);
-    const rest = sanitizeRawMarkdown(colonMatch[2]);
+  // If the line has bold-like leadin or colon (e.g. "**Immediate Action:** ..." or "Dosage: ...")
+  const cleanedLine = sanitizeRawMarkdown(rawText);
+  const colonMatch = cleanedLine.match(/^([A-Za-z0-9\s/&—–\-]+:)\s*(.*)$/);
+  if (colonMatch && colonMatch[1].length < 35 && !cleanedLine.startsWith('http')) {
+    const label = colonMatch[1];
+    const rest = colonMatch[2];
     return (
       <>
-        <span className={isUser ? 'font-bold text-white' : 'font-extrabold text-slate-900'}>
+        <span className={isUser ? 'font-bold text-white' : 'font-extrabold text-slate-950'}>
           {label}
         </span>{' '}
         <span className={isUser ? 'text-white/95' : 'text-slate-800'}>{rest}</span>
@@ -43,8 +46,7 @@ function renderInlineText(rawText: string, isUser: boolean): React.ReactNode {
     );
   }
 
-  const clean = sanitizeRawMarkdown(rawText);
-  return clean;
+  return cleanedLine;
 }
 
 /**

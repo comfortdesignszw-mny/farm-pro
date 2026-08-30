@@ -24,7 +24,8 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
   onDeleted,
 }) => {
   const { t } = useTranslation();
-  const [species, setSpecies] = useState<AnimalSpecies>('Cattle - Beef');
+  const [species, setSpecies] = useState<string>('Cattle - Beef');
+  const [customSpecies, setCustomSpecies] = useState('');
   const [breed, setBreed] = useState('');
   const [batchSize, setBatchSize] = useState<number>(1);
   const [acquisitionDate, setAcquisitionDate] = useState('');
@@ -34,9 +35,28 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
 
+  const speciesOptions = [
+    'Chickens - Layers',
+    'Broilers',
+    'Ducks',
+    'Pigs',
+    'Horses',
+    'Cattle - Beef',
+    'Cattle - Dairy',
+    'Goats',
+    'Sheep',
+    'Other',
+  ];
+
   useEffect(() => {
     if (animal) {
-      setSpecies(animal.species);
+      if (speciesOptions.includes(animal.species)) {
+        setSpecies(animal.species);
+        setCustomSpecies('');
+      } else {
+        setSpecies('Other');
+        setCustomSpecies(animal.species);
+      }
       setBreed(animal.breed || '');
       setBatchSize(animal.batchSize || 1);
       setAcquisitionDate(animal.acquisitionDate);
@@ -50,29 +70,19 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
 
   if (!isOpen || !animal) return null;
 
-  const speciesOptions: AnimalSpecies[] = [
-    'Chickens - Layers',
-    'Broilers',
-    'Ducks',
-    'Pigs',
-    'Horses',
-    'Cattle - Beef',
-    'Cattle - Dairy',
-    'Goats',
-    'Sheep',
-  ];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const finalSpecies = species === 'Other' ? (customSpecies.trim() || 'Other Livestock') : species;
+
     const updatedAnimal: Animal = {
       ...animal,
-      species,
+      species: finalSpecies as AnimalSpecies,
       breed: breed.trim() || 'Mixed / Indigenous',
-      batchSize: Number(batchSize) || 1,
+      batchSize: Math.max(1, Math.round(Number(batchSize) || 1)),
       acquisitionDate,
       acquisitionMethod,
-      cost: Number(cost) || 0,
+      cost: Math.max(0, Math.round(Number(cost) || 0)),
       status,
       photo: photo || undefined,
       notes: notes.trim(),
@@ -128,16 +138,36 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
             </label>
             <select
               value={species}
-              onChange={(e) => setSpecies(e.target.value as AnimalSpecies)}
+              onChange={(e) => setSpecies(e.target.value)}
               className="w-full min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-slate-50 text-farm-navy"
             >
               {speciesOptions.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {s === 'Other' ? 'Other (Specify Custom Livestock / Poultry / Fish)' : s}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Custom Species Input (Shown when Other is selected) */}
+          {species === 'Other' && (
+            <div className="p-3.5 bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150 space-y-1.5">
+              <label className="block text-sm font-bold text-emerald-950">
+                Specify Custom Animal Type / Species *
+              </label>
+              <input
+                type="text"
+                required
+                value={customSpecies}
+                onChange={(e) => setCustomSpecies(e.target.value)}
+                placeholder="e.g. Quails, Guinea Fowl, Rabbits, Turkeys, Tilapia/Fish, Bees, Pigeons"
+                className="w-full min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-emerald-400 bg-white focus:border-farm-navy outline-none text-slate-900"
+              />
+              <p className="text-xs text-emerald-800 font-medium">
+                Enter the specific animal or livestock you are rearing.
+              </p>
+            </div>
+          )}
 
           {/* Breed & Batch Size */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -155,15 +185,23 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
             </div>
             <div>
               <label className="block text-sm sm:text-base font-bold text-farm-navy mb-1">
-                Batch Size (Head)
+                Batch Size (Whole Number)
               </label>
               <input
                 type="number"
+                step="1"
                 min="1"
                 required
-                value={batchSize}
-                onChange={(e) => setBatchSize(Number(e.target.value))}
-                className="w-full min-h-[46px] px-3.5 py-2 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                value={batchSize || ''}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setBatchSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 10"
+                className="w-full min-h-[46px] px-3.5 py-2 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
             </div>
           </div>
@@ -216,14 +254,22 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
             </div>
             <div>
               <label className="block text-sm sm:text-base font-bold text-farm-navy mb-1">
-                Cost ($ USD)
+                Cost ($ USD) (Whole Number)
               </label>
               <input
                 type="number"
+                step="1"
                 min="0"
-                value={cost}
-                onChange={(e) => setCost(Number(e.target.value))}
-                className="w-full min-h-[46px] px-3.5 py-2 text-base font-semibold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                value={cost || ''}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 150"
+                className="w-full min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
             </div>
           </div>

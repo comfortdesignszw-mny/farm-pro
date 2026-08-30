@@ -22,7 +22,8 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
   onSaved,
 }) => {
   const { t } = useTranslation();
-  const [species, setSpecies] = useState<AnimalSpecies>(defaultSpecies || 'Cattle - Beef');
+  const [species, setSpecies] = useState<string>(defaultSpecies || 'Cattle - Beef');
+  const [customSpecies, setCustomSpecies] = useState('');
   const [breed, setBreed] = useState('');
   const [batchSize, setBatchSize] = useState<number>(10);
   const [acquisitionDate, setAcquisitionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -33,7 +34,7 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
 
   if (!isOpen) return null;
 
-  const speciesOptions: AnimalSpecies[] = [
+  const speciesOptions = [
     'Chickens - Layers',
     'Broilers',
     'Ducks',
@@ -43,20 +44,23 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
     'Cattle - Dairy',
     'Goats',
     'Sheep',
+    'Other',
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const finalSpecies = species === 'Other' ? (customSpecies.trim() || 'Other Livestock') : species;
+
     const newAnimal: Animal = {
       id: 'animal_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       farmId: farm.id,
-      species,
+      species: finalSpecies as AnimalSpecies,
       breed: breed.trim() || 'Mixed / Indigenous',
-      batchSize: Number(batchSize) || 1,
+      batchSize: Math.max(1, Math.round(Number(batchSize) || 1)),
       acquisitionDate,
       acquisitionMethod,
-      cost: Number(cost) || 0,
+      cost: Math.max(0, Math.round(Number(cost) || 0)),
       photo: photo || undefined,
       notes: notes.trim(),
       status: 'active',
@@ -97,16 +101,36 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
             </label>
             <select
               value={species}
-              onChange={(e) => setSpecies(e.target.value as AnimalSpecies)}
+              onChange={(e) => setSpecies(e.target.value)}
               className="w-full min-h-[48px] px-4 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-slate-50 text-farm-navy"
             >
               {speciesOptions.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {s === 'Other' ? 'Other (Specify Custom Livestock / Poultry / Fish)' : s}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Custom Species Input (Shown when Other is selected) */}
+          {species === 'Other' && (
+            <div className="p-3.5 bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150 space-y-1.5">
+              <label className="block text-sm font-bold text-emerald-950">
+                Specify Custom Animal Type / Species *
+              </label>
+              <input
+                type="text"
+                required
+                value={customSpecies}
+                onChange={(e) => setCustomSpecies(e.target.value)}
+                placeholder="e.g. Quails, Guinea Fowl, Rabbits, Turkeys, Tilapia/Fish, Bees, Pigeons"
+                className="w-full min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-emerald-400 bg-white focus:border-farm-navy outline-none text-slate-900"
+              />
+              <p className="text-xs text-emerald-800 font-medium">
+                Enter the specific animal or livestock you are rearing.
+              </p>
+            </div>
+          )}
 
           {/* Breed & Batch Size */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -124,15 +148,23 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                3. {t('animals.batch_size')}
+                3. {t('animals.batch_size')} (Whole Number)
               </label>
               <input
                 type="number"
+                step="1"
                 min="1"
                 required
-                value={batchSize}
-                onChange={(e) => setBatchSize(Number(e.target.value))}
-                className="w-full min-h-[48px] px-3.5 py-2.5 text-xl font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                value={batchSize || ''}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setBatchSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 10"
+                className="w-full min-h-[48px] px-3.5 py-2.5 text-xl font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
             </div>
           </div>
@@ -166,6 +198,30 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Cost if bought */}
+          {acquisitionMethod === 'bought' && (
+            <div>
+              <label className="block text-base font-bold text-farm-navy mb-1.5">
+                Total Purchase Cost ($) (Whole Number)
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={cost || ''}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 150"
+                className="w-full min-h-[48px] px-3.5 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
+              />
+            </div>
+          )}
 
           {/* Photo */}
           <div>

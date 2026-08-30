@@ -261,18 +261,25 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
             {/* Field 2: Farm Size + Unit */}
             <div>
               <label htmlFor="farm-size-input" className="block text-base font-bold text-farm-navy mb-1.5">
-                2. {t('onboarding.farm_size')}
+                2. {t('onboarding.farm_size')} (Whole Number)
               </label>
               <div className="flex gap-2">
                 <input
                   id="farm-size-input"
                   type="number"
-                  step="0.1"
-                  min="0.1"
+                  step="1"
+                  min="1"
                   required
-                  value={farmSize}
-                  onChange={(e) => setFarmSize(Number(e.target.value))}
-                  className="flex-1 min-h-[48px] px-4 py-3 text-lg rounded-xl border-2 border-slate-300 focus:border-farm-cyan focus:ring-2 focus:ring-farm-cyan/20 outline-none font-medium"
+                  value={farmSize || ''}
+                  onKeyDown={(e) => {
+                    if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                  }}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                    setFarmSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
+                  }}
+                  placeholder="e.g. 5"
+                  className="flex-1 min-h-[48px] px-4 py-3 text-lg rounded-xl border-2 border-slate-300 focus:border-farm-cyan focus:ring-2 focus:ring-farm-cyan/20 outline-none font-mono font-bold"
                 />
                 <select
                   id="farm-size-unit-select"
