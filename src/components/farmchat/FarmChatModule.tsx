@@ -510,113 +510,86 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
   };
 
   return (
-    <div className="pb-28 max-w-4xl mx-auto px-3 sm:px-4 py-3 flex flex-col h-[calc(100vh-140px)]">
-      {/* 1. Header & Online/Offline Notice */}
-      <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 mb-3 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-farm-cyan/20 text-farm-navy flex items-center justify-center">
-              <MessageSquareQuote className="w-6 h-6 stroke-[2.4]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-farm-navy">
-                  FarmChat Advisor
-                </h2>
-                {voiceMode === 'voice_search' && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                    <Radio className="w-3 h-3 text-emerald-600 animate-pulse" />
-                    <span>Voice Consultation</span>
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 font-medium line-clamp-1">
-                AI Agricultural & Veterinary Advisor • Multi-language (EN / Shona / Ndebele)
-              </p>
-            </div>
+    <div className="max-w-4xl mx-auto px-2 sm:px-4 py-1.5 flex flex-col h-[calc(100vh-130px)] sm:h-[calc(100vh-136px)]">
+      {/* 1. Ultra-Compact Top Header Bar */}
+      <div className="bg-white rounded-2xl px-3 py-2 shadow-xs border border-slate-200 mb-1.5 shrink-0 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-farm-cyan/20 text-farm-navy flex items-center justify-center shrink-0">
+            <MessageSquareQuote className="w-4.5 h-4.5 stroke-[2.4]" />
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setShowAgritexModal(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Extension / Vet Directory"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-amber-700" />
-              <span className="hidden sm:inline">AGRITEX / Vet Contacts</span>
-            </button>
-
-            {speakingMsgId && (
-              <button
-                type="button"
-                onClick={() => {
-                  stopSpeech();
-                  setSpeakingMsgId(null);
-                }}
-                className="px-2.5 py-1 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                title="Stop Speaking"
-              >
-                <Square className="w-3.5 h-3.5 fill-rose-600" />
-                <span>Stop Voice</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleClearHistory}
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-50 transition-colors cursor-pointer"
-              title="Clear Chat"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className="text-sm sm:text-base font-black text-farm-navy tracking-tight truncate">
+                FarmChat Advisor
+              </h2>
+              {isOnline ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Online AI</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                  <WifiOff className="w-2.5 h-2.5 text-amber-600" />
+                  <span>Offline</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Connectivity status banner */}
-        <div
-          className={`mt-2.5 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between gap-2 ${
-            isOnline
-              ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-              : 'bg-amber-50 text-amber-900 border border-amber-200'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {isOnline ? (
-              <>
-                <Wifi className="w-4 h-4 text-emerald-600" />
-                <span>Online AI Vision & Diagnostics Active</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-4 h-4 text-amber-600" />
-                <span>Offline Mode Active • Built-in Farm Guides & Decision Tree</span>
-              </>
-            )}
-          </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowAgritexModal(true)}
+            className="px-2 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+            title="AGRITEX & Veterinary Directory"
+          >
+            <PhoneCall className="w-3.5 h-3.5 text-amber-700" />
+            <span className="hidden sm:inline">AGRITEX</span>
+          </button>
 
-          <div className="text-[11px] font-semibold text-slate-500">
-            {autoSpeakBack ? '🔊 Auto Speak-Back' : '🔇 Silent Mode'}
-          </div>
+          {speakingMsgId && (
+            <button
+              type="button"
+              onClick={() => {
+                stopSpeech();
+                setSpeakingMsgId(null);
+              }}
+              className="px-2 py-1 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+              title="Stop Speaking"
+            >
+              <Square className="w-3 h-3 fill-rose-600" />
+              <span className="hidden sm:inline">Stop</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleClearHistory}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-50 transition-colors cursor-pointer"
+            title="Clear Chat History"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* 2. Messages Scroll Container */}
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1 py-2">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
         {/* Sample Question Chips if short history */}
         {messages.length <= 2 && (
-          <div className="p-4 bg-cyan-50/80 rounded-2xl border border-farm-cyan/30 space-y-2.5 animate-in fade-in duration-200">
-            <div className="flex items-center gap-1.5 text-xs font-black text-farm-navy uppercase tracking-wider">
-              <HelpCircle className="w-4 h-4 text-farm-cyan" />
-              <span>Common Smallholder Questions & Quick Diagnosis</span>
+          <div className="p-2.5 bg-cyan-50/70 rounded-xl border border-farm-cyan/20 space-y-1.5 animate-in fade-in duration-200">
+            <div className="flex items-center gap-1 text-[11px] font-black text-farm-navy uppercase tracking-wider">
+              <HelpCircle className="w-3.5 h-3.5 text-farm-cyan" />
+              <span>Common Smallholder Questions</span>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1">
               {samplePromptCategories.map((item, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => handleSendMessage(item.query)}
-                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-farm-navy hover:text-white border border-slate-200 text-slate-800 text-xs font-bold transition-all text-left cursor-pointer shadow-xs"
+                  className="px-2.5 py-1 rounded-lg bg-white hover:bg-farm-navy hover:text-white border border-slate-200 text-slate-800 text-xs font-bold transition-all text-left cursor-pointer shadow-2xs"
                 >
                   {item.label}
                 </button>
@@ -634,39 +607,39 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
           return (
             <div
               key={msg.id}
-              className={`flex gap-2.5 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-2 sm:gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
-                <div className="w-10 h-10 rounded-2xl bg-farm-navy text-farm-cyan flex items-center justify-center shrink-0 mt-0.5 shadow-sm ring-2 ring-farm-cyan/20">
-                  <Bot className="w-5 h-5 stroke-[2.4]" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-farm-navy text-farm-cyan flex items-center justify-center shrink-0 mt-0.5 shadow-2xs ring-1 ring-farm-cyan/20">
+                  <Bot className="w-4 h-4 stroke-[2.4]" />
                 </div>
               )}
 
               <div
-                className={`max-w-[92%] sm:max-w-[82%] rounded-3xl p-4 sm:p-5 shadow-sm relative group transition-all ${
+                className={`max-w-[95%] sm:max-w-[86%] rounded-2xl p-3 sm:p-4 shadow-xs relative group transition-all ${
                   isUser
                     ? 'bg-farm-navy text-white rounded-tr-xs border border-slate-700/60 ring-1 ring-white/10'
                     : 'bg-white text-slate-900 rounded-tl-xs border border-slate-200 shadow-xs'
                 }`}
               >
                 {/* Sender Header Pill */}
-                <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-white/15 dark:border-slate-100">
+                <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-white/15 dark:border-slate-100">
                   <div className="flex items-center gap-1.5">
                     {isUser ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-farm-cyan">
-                        <User className="w-3.5 h-3.5 text-farm-cyan" />
+                        <User className="w-3 h-3 text-farm-cyan" />
                         <span>You (Farmer)</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-farm-navy">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <Sparkles className="w-3 h-3 text-emerald-600" />
                         <span>FarmChat AI Advisor</span>
                       </span>
                     )}
                   </div>
 
                   <div
-                    className={`text-[11px] font-semibold ${
+                    className={`text-[10px] font-semibold ${
                       isUser ? 'text-slate-300' : 'text-slate-400'
                     }`}
                   >
@@ -880,38 +853,35 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 3. Message Input Strip with Photo & Voice */}
-      <div className="mt-2 bg-white rounded-3xl p-3 shadow-lg border border-slate-200 shrink-0">
+      {/* 3. Ultra-Slim Message Input Strip */}
+      <div className="mt-1 bg-white rounded-2xl p-1.5 sm:p-2 shadow-sm border border-slate-200 shrink-0">
         {/* Attached Photo Chip */}
         {attachedPhoto && (
-          <div className="mb-2.5 p-2 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between animate-in fade-in duration-150">
-            <div className="flex items-center gap-2.5">
+          <div className="mb-1.5 px-2.5 py-1 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between animate-in fade-in duration-150">
+            <div className="flex items-center gap-2 min-w-0">
               <img
                 src={URL.createObjectURL(attachedPhoto)}
                 alt="Selected"
-                className="w-12 h-12 rounded-xl object-cover border border-slate-300 shadow-xs"
+                className="w-8 h-8 rounded-lg object-cover border border-slate-300 shadow-2xs shrink-0"
               />
-              <div>
-                <span className="text-xs font-bold text-slate-900 block">
-                  📷 Photo Attached for AI Diagnostic Vision
-                </span>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  Review your question below, then tap Send for AI symptom diagnosis
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-900 truncate block">
+                  📷 Photo Attached for AI Diagnosis
                 </span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setAttachedPhoto(null)}
-              className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-slate-200 transition-colors cursor-pointer"
+              className="p-1 rounded-full text-slate-400 hover:text-rose-600 hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
               title="Remove photo"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Photo attach button */}
           <div className="shrink-0">
             <input
@@ -929,15 +899,16 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
               type="button"
               id="farmchat-camera-btn"
               onClick={() => document.getElementById('farmchat-photo-input')?.click()}
-              className="min-h-[48px] min-w-[48px] p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-farm-navy flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+              className="h-10 w-10 min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-farm-navy flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
               title="Attach Photo for Diagnosis"
             >
-              <Camera className="w-6 h-6 stroke-[2.2] text-farm-navy" />
+              <Camera className="w-5 h-5 stroke-[2.2] text-farm-navy" />
             </button>
           </div>
 
           {/* Voice Input Button: Transcribes directly into the input box for farmer review */}
           <VoiceInputButton
+            buttonSize="compact"
             onTranscript={(text) => {
               setInputQuery((prev) => {
                 if (!prev) return text;
@@ -964,19 +935,19 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
               }}
               placeholder={
                 attachedPhoto
-                  ? 'Add notes about this photo or tap Send...'
-                  : 'Type or tap mic to speak into message box...'
+                  ? 'Add notes about photo or tap Send...'
+                  : 'Ask any farming question or tap mic...'
               }
-              className="w-full min-h-[48px] px-4 py-2.5 text-base font-semibold rounded-2xl border-2 border-slate-300 focus:border-farm-navy focus:bg-white outline-none bg-slate-50 text-slate-900 transition-colors"
+              className="w-full h-10 min-h-[40px] px-3 text-sm sm:text-[15px] font-semibold rounded-xl border border-slate-300 focus:border-farm-navy focus:bg-white outline-none bg-slate-50 text-slate-900 transition-colors"
             />
             {inputQuery && (
               <button
                 type="button"
                 onClick={() => setInputQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                 title="Clear input"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -987,18 +958,12 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
             id="farmchat-send-btn"
             disabled={!inputQuery.trim() && !attachedPhoto}
             onClick={() => handleSendMessage()}
-            className="min-h-[48px] min-w-[52px] px-4 py-2.5 bg-farm-navy hover:bg-slate-800 disabled:opacity-40 text-white rounded-2xl flex items-center justify-center gap-1.5 font-extrabold text-sm transition-all cursor-pointer shrink-0 shadow-sm active:scale-95"
+            className="h-10 min-h-[40px] px-3 sm:px-4 bg-farm-navy hover:bg-slate-800 disabled:opacity-40 text-white rounded-xl flex items-center justify-center gap-1.5 font-extrabold text-xs sm:text-sm transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
             title="Send query to FarmChat Advisor"
           >
-            <Send className="w-5 h-5 text-farm-cyan stroke-[2.5]" />
+            <Send className="w-4 h-4 text-farm-cyan stroke-[2.5]" />
             <span className="hidden sm:inline">Send</span>
           </button>
-        </div>
-
-        {/* Informative Guidance Banner for Voice & Check */}
-        <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium px-2 pt-2">
-          <span>🎤 Speak into mic or type → Check accuracy → Tap Send</span>
-          <span>Languages: EN • Shona • Ndebele</span>
         </div>
       </div>
 

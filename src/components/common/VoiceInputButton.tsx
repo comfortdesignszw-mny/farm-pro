@@ -9,7 +9,7 @@ interface VoiceInputButtonProps {
   onListeningChange?: (isListening: boolean) => void;
   lang?: string;
   className?: string;
-  buttonSize?: 'normal' | 'large';
+  buttonSize?: 'compact' | 'normal' | 'large';
   label?: string;
 }
 
@@ -115,13 +115,20 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     }
   };
 
+  const sizeClasses =
+    buttonSize === 'compact'
+      ? 'h-10 w-10 min-h-[40px] min-w-[40px] p-2 rounded-xl text-xs'
+      : buttonSize === 'large'
+      ? 'min-h-[52px] min-w-[52px] px-4 py-3 rounded-2xl text-base'
+      : 'min-h-[48px] min-w-[48px] px-3 py-2 rounded-xl text-sm';
+
   return (
     <button
       type="button"
       id="voice-input-btn"
       onClick={toggleListening}
       title={isListening ? t('common.listening') : t('common.tap_mic_to_speak')}
-      className={`min-h-[48px] min-w-[48px] px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all cursor-pointer select-none ${
+      className={`${sizeClasses} flex items-center justify-center gap-1.5 font-semibold transition-all cursor-pointer select-none ${
         isListening
           ? 'bg-rose-600 text-white animate-pulse shadow-lg ring-4 ring-rose-200'
           : 'bg-slate-100 hover:bg-slate-200 text-farm-navy active:bg-slate-300'
@@ -129,12 +136,14 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     >
       {isListening ? (
         <>
-          <MicOff className="w-5 h-5 text-white" />
-          <span className="text-sm font-bold tracking-wide">{t('common.listening')}</span>
+          <MicOff className={buttonSize === 'compact' ? 'w-4 h-4 text-white' : 'w-5 h-5 text-white'} />
+          {buttonSize !== 'compact' && (
+            <span className="text-sm font-bold tracking-wide">{t('common.listening')}</span>
+          )}
         </>
       ) : (
         <>
-          <Mic className="w-5 h-5 text-farm-navy" />
+          <Mic className={buttonSize === 'compact' ? 'w-4 h-4 text-farm-navy' : 'w-5 h-5 text-farm-navy'} />
           {label ? <span className="text-sm font-semibold">{label}</span> : null}
         </>
       )}
