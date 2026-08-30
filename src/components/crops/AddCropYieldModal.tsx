@@ -46,7 +46,7 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
     e.preventDefault();
 
     const record: YieldRecord = {
-      id: 'yield_' + Date.now(),
+      id: 'yield_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       cropCycleId: cycleId || activeCycles[0]?.id || 'default_cycle',
       quantity: Number(quantity) || 0,
       unit,
@@ -59,7 +59,7 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
       createdAt: Date.now(),
     };
 
-    await db.yieldRecords.add(record);
+    await db.yieldRecords.put(record);
     onSaved(record);
   };
 

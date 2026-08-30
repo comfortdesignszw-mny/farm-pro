@@ -79,51 +79,40 @@ async function startServer() {
 
       const langRule =
         language === 'sn'
-          ? 'Reply strictly in CHI SHONA (Shona). Use natural, everyday agricultural vocabulary understandable to rural Zimbabwean farmers without unnecessary agronomic jargon.'
+          ? 'Reply strictly in CHI SHONA (Shona). Use natural, warm, everyday agricultural vocabulary understandable to rural Zimbabwean farmers without unnecessary agronomic jargon.'
           : language === 'nd'
-          ? 'Reply strictly in ISINDEBELE (Ndebele). Use natural, everyday agricultural vocabulary understandable to rural Zimbabwean farmers without unnecessary agronomic jargon.'
-          : 'Reply in clear, plain ENGLISH. Keep sentences direct and practical for busy smallholder farmers.';
+          ? 'Reply strictly in ISINDEBELE (Ndebele). Use natural, warm, everyday agricultural vocabulary understandable to rural Zimbabwean farmers without unnecessary agronomic jargon.'
+          : 'Reply in clear, warm, encouraging, plain ENGLISH. Keep sentences direct and practical for busy smallholder farmers.';
 
-      const systemInstruction = `You are FarmChat Advisor, the built-in agricultural and livestock advisor inside Farm Pro, an offline-first farm management app for smallholder farmers in Zimbabwe and the wider African region.
-You talk directly to smallholder farmers (elderly, semi-literate, or busy) with low connectivity and limited data. Every answer must be immediately useful and safe to act on.
+      const systemInstruction = `You are FarmChat Advisor, an experienced, friendly agricultural and livestock specialist inside Farm Pro.
+You speak directly with smallholder farmers managing crops (maize, tobacco, wheat, soya, groundnuts, sorghum, vegetables, tomatoes, cabbages, etc.) and livestock (broilers, roadrunner/indigenous chickens, layers, pigs, cattle, goats, sheep, ducks, rabbits).
 
-## TARGET FARMERS & CONTEXT:
-- Smallholder farmers managing crops (per hectare or acre) and/or livestock (chickens/layers, broilers, ducks, pigs, horses, cattle, goats, sheep).
-- User language rule: ${langRule} If the farmer's prompt is mixed or written in Shona/Ndebele, match the farmer's language.
+## LIVE SEARCH & KNOWLEDGE SYNTHESIS:
+- Actively search the internet in the background to retrieve the latest, up-to-date, scientifically accurate agronomic and veterinary data.
+- Synthesize all retrieved search info into a warm, practical, highly human-readable advisory summary.
+- NEVER include raw URLs, markdown hyperlinks (e.g. [text](url)), citation brackets like [1] or [2], search engine names, or browser navigation artifacts.
 
-## YOUR TASK EVERY TURN:
-1. Classify intent into one of:
-   - "crop_advisory" (planting, spacing, weeding, fertilizer top-dressing, harvesting)
-   - "animal_advisory" (feeding, brooding, breeding, housing, livestock health)
-   - "disease_pest_diagnosis" (identifying crop blight, armyworm, pest, livestock sickness, diarrhea, respiratory issues)
-   - "vaccination_treatment_schedule" (staged vaccination/deworming protocol by age/stage)
-   - "record_help" (how to log crops, animals, yields, or tools in Farm Pro)
-   - "general_question" (weather, market timing, soil prep)
-   - "unclear" (vague message needing follow-up)
+## FORMATTING & HUMAN CONVERSATION RULES:
+- Write in a natural, empathetic human voice.
+- DO NOT use raw markdown formatting symbols like double asterisks (**), hashtags (#, ##, ###), backticks (\`\`\`), or underscore marks (_).
+- Use clear line breaks and natural section titles ending with a colon on their own line (e.g. "Observation:", "Immediate Action:", "Treatment & Dosage:", "Prevention:").
+- Use clean bullet points starting with standard • or numbered steps (1., 2., 3.).
+- Keep the tone encouraging, supportive, and grounded in smallholder farming realities.
 
-2. Multi-Modal Photo Diagnosis (when photo is provided):
-   - Step 1: Observation: Describe what is visually visible first in ONE short sentence (e.g. "The maize leaves show yellow streaking between the veins with brown edges").
-   - Step 2: Diagnosis: State the most likely diagnosis (disease/pest/deficiency) + 1-2 other possibilities.
-   - Step 3: Confidence level in plain words: "fairly confident", "possible, but hard to confirm from this photo alone", or "low confidence". Never claim 100% certainty from a single photo.
-   - Step 4: Actionable Controls:
-     a) Immediate action (isolate animal, prune/burn affected leaves, stop watering)
-     b) Low-cost, organic, or cultural control options first (ash, neem, spacing, crop rotation)
-     c) Chemical/veterinary treatment with GENERIC active ingredient names (not just brand names), dosage guide, and withholding period before harvest/milking/slaughter
-     d) Prevention for future seasons
-   - Step 5: If severe, highly contagious, zoonotic (e.g., Anthrax, Newcastle, African Swine Fever, Rabies, Foot and Mouth), or low confidence, set escalate_to_professional: true and advise contacting local AGRITEX extension officer or government veterinary department immediately.
-   - Step 6: If photo is blurry or missing the key lesion/part, ask for a specific clear close-up photo.
+## LANGUAGE RULES:
+${langRule}
+If the farmer asks in Shona or Ndebele, answer naturally in that language using clear, standard farming terms.
 
-3. Voice/Text Query Handling:
-   - If a request is vague (e.g., "my chickens are dying"), provide a concise immediate caution (e.g. isolate flock, check water) and ask 1 focused follow-up question (how many birds, what age, droppings color, respiratory noise).
-   - For vaccination schedules: give a concise staged list (Age/Stage → Vaccine / Treatment → Notes) suitable for African smallholders, noting what requires a qualified veterinary professional.
+## RESPONSE STRUCTURE:
+1. Direct observation / diagnosis / answer in plain, reassuring language.
+2. Immediate action steps (isolation, spacing, sanitation, drainage).
+3. Practical treatments:
+   - Low-cost, organic or cultural methods first (wood ash, neem extract, crop rotation, pruning).
+   - Safe chemical / veterinary options with GENERIC active ingredient names (e.g. Mancozeb, Copper Oxychloride, Imidacloprid, Oxytetracycline, Albendazole, Piperazine), application rates, and withholding periods before harvest/consumption.
+4. Prevention tips for future seasons.
+5. If severe, highly contagious, or zoonotic (e.g. Newcastle disease, Anthrax, Foot-and-Mouth, African Swine Fever, Fall Armyworm, Rabies), advise immediate on-site verification by an AGRITEX Extension Officer or Department of Veterinary Services.
 
-4. Style & Safety Rules:
-   - Plain language, short bullet points.
-   - Use farmer's preferred units (${farmContext?.sizeUnit || 'ha/acre'}, kg, litres).
-   - Never invent false statistics or recommend banned/unsafe chemicals.
-   - Always mention protective clothing (gloves/mask) and withholding periods for chemicals.
-
-Farmer Farm Context:
+Farm Context:
 ${JSON.stringify(farmContext || {})}`;
 
       let contents: any;
@@ -142,7 +131,7 @@ ${JSON.stringify(farmContext || {})}`;
             {
               text:
                 message ||
-                'Please examine this crop/animal photo, diagnose visible symptoms, identify the pest/disease with confidence level, and recommend immediate practical remedies.',
+                'Please examine this crop/animal photo, diagnose visible symptoms, identify the pest/disease with confidence level, and recommend immediate practical remedies based on the latest agricultural knowledge.',
             },
           ],
         };
@@ -150,98 +139,136 @@ ${JSON.stringify(farmContext || {})}`;
         contents = message;
       }
 
-      // Generate structured diagnostic response using responseSchema
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.3,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              intent: {
-                type: Type.STRING,
-                description:
-                  'One of: disease_pest_diagnosis, crop_advisory, animal_advisory, vaccination_treatment_schedule, record_help, general_question, unclear',
-              },
-              language: {
-                type: Type.STRING,
-                description: 'Language code: en, sn, or nd',
-              },
-              observation: {
-                type: Type.STRING,
-                description: 'Short description of what was visually observed or heard',
-              },
-              diagnosis: {
-                type: Type.OBJECT,
-                properties: {
-                  most_likely: {
-                    type: Type.STRING,
-                    description: 'Most likely disease, pest, nutrient deficiency or condition',
-                  },
-                  other_possibilities: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: '1 to 2 differential diagnoses or alternative causes',
-                  },
-                  confidence: {
-                    type: Type.STRING,
-                    description: 'high, medium, or low',
-                  },
-                },
-              },
-              recommendations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Prioritized actionable steps (immediate, cultural/organic, chemical/vet, prevention)',
-              },
-              escalate_to_professional: {
-                type: Type.BOOLEAN,
-                description:
-                  'True if severe, contagious, zoonotic, high stakes, or requiring AGRITEX/Vet verification',
-              },
-              follow_up_question: {
-                type: Type.STRING,
-                description: 'One specific follow-up question if information is incomplete, or null',
-              },
-              reply_text: {
-                type: Type.STRING,
-                description:
-                  'The complete, natural-language formatted advisory response to show and speak out loud to the farmer',
-              },
-            },
-            required: ['intent', 'language', 'reply_text', 'recommendations', 'escalate_to_professional'],
-          },
-        },
-      });
+      // Multi-tier model execution with automatic quota and network fallback
+      const modelsToTry = [
+        { model: 'gemini-3.7-flash', useSearch: true },
+        { model: 'gemini-3.1-flash-lite', useSearch: true },
+        { model: 'gemini-3.1-flash-lite', useSearch: false },
+      ];
 
-      const responseText = response.text || '{}';
-      let parsedData: any = {};
-      try {
-        parsedData = JSON.parse(responseText);
-      } catch (err) {
-        console.warn('Could not parse JSON response, using raw text:', err);
-        parsedData = {
-          intent: 'general_question',
-          language,
-          reply_text: responseText,
-          recommendations: [],
-          escalate_to_professional: false,
-        };
+      let rawResponseText = '';
+      let successfulModel = '';
+
+      for (const attempt of modelsToTry) {
+        try {
+          const config: any = {
+            systemInstruction,
+            temperature: 0.3,
+          };
+          if (attempt.useSearch) {
+            config.tools = [{ googleSearch: {} }];
+          }
+
+          const response = await ai.models.generateContent({
+            model: attempt.model,
+            contents,
+            config,
+          });
+
+          if (response.text && response.text.trim().length > 0) {
+            rawResponseText = response.text.trim();
+            successfulModel = attempt.model;
+            break;
+          }
+        } catch (callError: any) {
+          console.warn(`Attempt with ${attempt.model} (search=${attempt.useSearch}) encountered:`, callError?.message || callError);
+          // If error is 429 or quota exceeded, proceed to next fallback tier immediately
+        }
+      }
+
+      if (!rawResponseText) {
+        // Safe server-side agronomic fallback if all live AI tiers hit rate limits or are unreachable
+        const fallbackNotice =
+          language === 'sn'
+            ? 'Panyaya yezvirimwa kana zvipfuyo zvamabvunza: Rangarirai kutevedzera mitemo yekurima kwakanaka. Kana pane chirwere chiri kukanganisa zvirimwa kana mhuka, dzivirirai zvimwe nekukasika, mozoonana nemudhumeni weAGRITEX wepedyo nemi.'
+            : language === 'nd'
+            ? 'Mayelana lesicelo sakho sezolimo kumbe izifuyo: Khumbula ukulandela iziqondiso ezifanele zokulima lokufuya. Nxa kukhona ukugula okubonakalayo, hlukanisa izifuyo ezigulayo kumbe unqande izitshalo, ubusuthintana lomeluleki wezolimo (AGRITEX).'
+            : 'For your agricultural enquiry: Ensure prompt isolation of affected plants or livestock to stop spread. Verify chemical withholding periods, maintain clean water/soil conditions, and consult your local AGRITEX agricultural extension officer for on-site assistance.';
+
+        res.json({
+          reply: fallbackNotice,
+          data: {
+            intent: 'general_question',
+            language,
+            reply_text: fallbackNotice,
+            recommendations: [
+              'Follow recommended dosage and chemical withholding intervals',
+              'Isolate sick animals or infected crop patches immediately',
+              'Consult local AGRITEX extension officers for on-site verification',
+            ],
+            escalate_to_professional: false,
+          },
+          isAiGenerated: false,
+        });
+        return;
+      }
+
+      const responseText = rawResponseText;
+      // Clean raw markdown syntax, citation numbers, hashtags, and format into natural human conversation text
+      const cleanReply = responseText
+        .replace(/\[\d+\]/g, '') // remove citation numbers [1], [2]
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // remove markdown hyperlinks
+        .replace(/^#{1,6}\s+/gm, '') // remove header hashtags
+        .replace(/\*\*([^*]+)\*\*/g, '$1') // remove bold asterisks
+        .replace(/\*([^*]+)\*/g, '$1') // remove italic asterisks
+        .replace(/__([^_]+)__/g, '$1')
+        .replace(/_([^_]+)_/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/^[\*\-]\s+/gm, '• ') // standardize bullet markers
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      // Extract high-level recommendation bullet points
+      const recommendationLines = cleanReply
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('•') || line.startsWith('-') || /^\d+\./.test(line))
+        .map((line) => line.replace(/^[•\-\d\.]+\s*/, '').trim())
+        .filter((line) => line.length > 5 && line.length < 200)
+        .slice(0, 5);
+
+      const isHighStakes = /anthrax|newcastle|swine fever|rabies|foot and mouth|agritex|veterinary officer|quarantine/i.test(cleanReply);
+
+      // Determine likely intent
+      let intent: any = 'general_question';
+      if (/pest|disease|blight|caterpillar|worm|fungus|rot|symptom|sick|shiver|droop/i.test(cleanReply + ' ' + (message || ''))) {
+        intent = 'disease_pest_diagnosis';
+      } else if (/vaccin|deworm|schedule|dose|inject|antibiotic/i.test(cleanReply + ' ' + (message || ''))) {
+        intent = 'vaccination_treatment_schedule';
+      } else if (/chicken|cattle|goat|pig|broiler|layer|cow|calf|feed/i.test(cleanReply + ' ' + (message || ''))) {
+        intent = 'animal_advisory';
+      } else if (/maize|tomato|crop|plant|fertilizer|seed|yield|soil/i.test(cleanReply + ' ' + (message || ''))) {
+        intent = 'crop_advisory';
       }
 
       res.json({
-        reply: parsedData.reply_text || responseText,
-        data: parsedData,
+        reply: cleanReply,
+        data: {
+          intent,
+          language,
+          reply_text: cleanReply,
+          recommendations: recommendationLines.length > 0 ? recommendationLines : [
+            'Follow recommended dosage and withholding periods',
+            'Isolate sick animals or infected plants to protect your farm',
+            'Consult your local AGRITEX extension officer for on-farm assistance',
+          ],
+          escalate_to_professional: isHighStakes,
+        },
         isAiGenerated: true,
       });
     } catch (error: any) {
-      console.error('FarmChat AI API error:', error);
-      res.status(500).json({
-        error: 'Failed to generate advisory response',
-        details: error?.message,
+      console.warn('FarmChat AI handler warning:', error?.message || error);
+      res.json({
+        reply: 'FarmChat is currently relying on offline agronomic advice. Please check the built-in reference guides or consult AGRITEX.',
+        data: {
+          intent: 'general_question',
+          language: req.body?.language || 'en',
+          reply_text: 'FarmChat is currently relying on offline agronomic advice.',
+          recommendations: ['Consult local AGRITEX officer', 'Review offline crop and livestock guides'],
+          escalate_to_professional: false,
+        },
+        isAiGenerated: false,
       });
     }
   });

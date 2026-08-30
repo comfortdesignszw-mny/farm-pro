@@ -49,7 +49,7 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
     e.preventDefault();
 
     const newAnimal: Animal = {
-      id: 'animal_' + Date.now(),
+      id: 'animal_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       farmId: farm.id,
       species,
       breed: breed.trim() || 'Mixed / Indigenous',
@@ -63,7 +63,7 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
       createdAt: Date.now(),
     };
 
-    await db.animals.add(newAnimal);
+    await db.animals.put(newAnimal);
     onSaved(newAnimal);
   };
 

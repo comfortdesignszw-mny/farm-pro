@@ -183,6 +183,35 @@ export interface Tool {
   createdAt: number;
 }
 
+export type TaskCategory =
+  | 'crop_health'
+  | 'animal_health'
+  | 'fertilizer'
+  | 'spray'
+  | 'vaccine'
+  | 'deworming'
+  | 'weeding'
+  | 'maintenance'
+  | 'harvest'
+  | 'general';
+
+export interface FarmTask {
+  id: string;
+  farmId: string;
+  title: string;
+  category: TaskCategory;
+  targetType: 'crop' | 'animal' | 'tool' | 'general';
+  targetId?: string;
+  targetName?: string;
+  dueDate: string;
+  isCompleted: boolean;
+  completedAt?: number;
+  priority: 'high' | 'medium' | 'low';
+  cost?: number;
+  notes?: string;
+  createdAt: number;
+}
+
 export type AdvisorIntent =
   | 'crop_advisory'
   | 'animal_advisory'

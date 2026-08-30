@@ -44,7 +44,7 @@ export const AddAnimalFeedModal: React.FC<AddAnimalFeedModalProps> = ({
     e.preventDefault();
 
     const record: AnimalFeedRecord = {
-      id: 'feed_' + Date.now(),
+      id: 'feed_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       animalId: animalId || animals[0]?.id || 'default_animal',
       feedType: feedType.trim() || 'Feed',
       quantity: Number(quantity) || 0,
@@ -54,7 +54,7 @@ export const AddAnimalFeedModal: React.FC<AddAnimalFeedModalProps> = ({
       createdAt: Date.now(),
     };
 
-    await db.animalFeedRecords.add(record);
+    await db.animalFeedRecords.put(record);
     onSaved(record);
   };
 

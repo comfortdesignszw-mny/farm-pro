@@ -79,7 +79,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     e.preventDefault();
 
     const newFarm: Farm = {
-      id: 'farm_' + Date.now(),
+      id: 'farm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       name: farmName.trim() || 'My Family Farm',
       size: Number(farmSize) || 1,
       sizeUnit,
@@ -89,11 +89,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     };
 
     // Save farm to Dexie
-    await db.farms.add(newFarm);
+    await db.farms.put(newFarm);
 
     // Create a default field for immediate convenience
-    await db.fields.add({
-      id: 'field_1',
+    await db.fields.put({
+      id: 'field_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       farmId: newFarm.id,
       name: 'Main Field',
       size: newFarm.size,

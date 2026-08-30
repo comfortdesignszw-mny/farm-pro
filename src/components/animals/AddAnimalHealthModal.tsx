@@ -49,7 +49,7 @@ export const AddAnimalHealthModal: React.FC<AddAnimalHealthModalProps> = ({
     e.preventDefault();
 
     const record: AnimalHealthRecord = {
-      id: 'health_' + Date.now(),
+      id: 'health_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       animalId: animalId || animals[0]?.id || 'default_animal',
       type: healthType,
       product: product.trim() || healthType,
@@ -61,7 +61,7 @@ export const AddAnimalHealthModal: React.FC<AddAnimalHealthModalProps> = ({
       createdAt: Date.now(),
     };
 
-    await db.animalHealthRecords.add(record);
+    await db.animalHealthRecords.put(record);
     onSaved(record);
   };
 

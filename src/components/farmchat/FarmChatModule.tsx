@@ -33,6 +33,7 @@ import { ChatMessage, Farm, DiagnosticData, AdvisorIntent } from '../../types';
 import { VoiceInputButton } from '../common/VoiceInputButton';
 import { blobToBase64 } from '../../utils/imageCompressor';
 import { speakText, stopSpeech } from '../../utils/speechSynthesis';
+import { HumanFormattedMessage } from './HumanFormattedMessage';
 
 interface FarmChatModuleProps {
   farm: Farm;
@@ -144,7 +145,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
           escalate_to_professional: false,
         },
       };
-      await db.chatMessages.add(starter);
+      await db.chatMessages.put(starter);
       setMessages([starter]);
     } else {
       setMessages(saved);
@@ -207,7 +208,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         ? 'crop_advisory'
         : 'animal_advisory';
 
-      const fullReply = `📌 **${bestMatch.title}**\n\n${bestMatch.summary}\n\n${bestMatch.bulletPoints
+      const fullReply = `${bestMatch.title}:\n\n${bestMatch.summary}\n\n${bestMatch.bulletPoints
         .map((b: string) => `• ${b}`)
         .join('\n')}`;
 
@@ -232,7 +233,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
 
     // Default offline fallback
     if (i18n.language === 'sn') {
-      const msg = `📌 **Zano rePurazi**: Ndatenda nemubvunzo. Tarisai zvikamu zvezvirimwa nezvipfuyo zviri paFarm Pro kuti muwane magwaro akazara. Kana maverenga pamusoro pezvirwere zvakakomba, tapota tsvagai mudhumeni wekurima weAGRITEX kana chiremba wemhuka ari pedyo.`;
+      const msg = `Zano rePurazi:\n\nNdatenda nemubvunzo wenyu. Tarisai zvikamu zvezvirimwa nezvipfuyo zviri mukati meFarm Pro kuti muwane magwaro akazara ekurima. Kana maverenga pamusoro pezvirwere zvakakomba, tapota tsvagai mudhumeni wekurima weAGRITEX kana chiremba wemhuka ari pedyo.`;
       return {
         text: msg,
         data: {
@@ -248,7 +249,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       };
     }
     if (i18n.language === 'nd') {
-      const msg = `📌 **Iseluleko**: Ngiyabonga ngombuzo wakho. Qala ukhangele iziqondiso zezitshalo lezifuyo ezibhalwe ku-Farm Pro. Nxa kuyisifo esikhulu, thintana lomeluleki wezolimo weduze lawe.`;
+      const msg = `Iseluleko seZolimo:\n\nNgiyabonga ngombuzo wakho. Qala ukhangele iziqondiso zezitshalo lezifuyo ezibhalwe ku-Farm Pro. Nxa kuyisifo esikhulu, thintana lomeluleki wezolimo weduze lawe.`;
       return {
         text: msg,
         data: {
@@ -264,7 +265,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       };
     }
 
-    const defaultMsg = `📌 **Farm Advisory**: Consult the built-in Crop & Species Management Guides inside Farm Pro for complete offline agronomy and livestock protocols. For severe acute disease symptoms, immediately isolate affected animals or plants and contact local AGRITEX / Veterinary officers.`;
+    const defaultMsg = `Farm Advisory:\n\nConsult the built-in Crop & Species Management Guides inside Farm Pro for complete offline agronomy and livestock protocols. For severe acute disease symptoms, immediately isolate affected animals or plants and contact local AGRITEX / Veterinary officers.`;
     return {
       text: defaultMsg,
       data: {
@@ -285,16 +286,19 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
     const text = (textToSend || inputQuery).trim();
     if (!text && !attachedPhoto) return;
 
+    // Initially assume connection might be available to attempt live search
+    const initialOnlineEstimate = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
     const userMessage: ChatMessage = {
-      id: 'msg_' + Date.now(),
+      id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       role: 'user',
       content: text || (attachedPhoto ? 'Please inspect this farm photo and diagnose.' : ''),
       mediaAttachment: attachedPhoto || undefined,
       timestamp: Date.now(),
-      synced: isOnline,
+      synced: initialOnlineEstimate,
     };
 
-    await db.chatMessages.add(userMessage);
+    await db.chatMessages.put(userMessage);
     setMessages((prev) => [...prev, userMessage]);
     setInputQuery('');
     const photoToProcess = attachedPhoto;
@@ -305,20 +309,27 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       let replyContent = '';
       let diagnosticData: DiagnosticData | undefined = undefined;
       let isAiGenerated = false;
+      let usedLiveConnection = false;
 
-      if (isOnline) {
-        let imageBase64: string | undefined = undefined;
-        if (photoToProcess) {
-          try {
-            imageBase64 = await blobToBase64(photoToProcess);
-          } catch (e) {
-            console.warn('Error reading photo base64', e);
-          }
+      // STAGE 1: Attempt live internet search via Gemini Google Search grounding first (even on low connection)
+      let imageBase64: string | undefined = undefined;
+      if (photoToProcess) {
+        try {
+          imageBase64 = await blobToBase64(photoToProcess);
+        } catch (e) {
+          console.warn('Error reading photo base64', e);
         }
+      }
+
+      try {
+        // Robust 25-second timeout allowing low/2G/3G connections to complete
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
         const res = await fetch('/api/farmchat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             message: text,
             imageBase64,
@@ -331,37 +342,45 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
             },
           }),
         });
+        clearTimeout(timeoutId);
 
         if (res.ok) {
           const data = await res.json();
-          replyContent = data.reply;
-          diagnosticData = data.data;
-          isAiGenerated = data.isAiGenerated;
+          if (data.reply && data.reply.trim().length > 0) {
+            replyContent = data.reply;
+            diagnosticData = data.data;
+            isAiGenerated = data.isAiGenerated;
+            usedLiveConnection = true;
+            setIsOnline(true);
+          } else {
+            throw new Error('Empty response from AI search');
+          }
         } else {
-          // Fallback to offline knowledge base if API returned error
-          const offlineRes = await searchOfflineKnowledgeBase(text);
-          replyContent = offlineRes.text;
-          diagnosticData = offlineRes.data;
+          throw new Error(`Server returned status ${res.status}`);
         }
-      } else {
-        // Pure Offline Search
+      } catch (networkOrAiError) {
+        console.warn('Live internet search failed or offline. Falling back to offline knowledge base:', networkOrAiError);
+        // STAGE 2: Fallback immediately to offline knowledge base upon network failure or no connection
+        setIsOnline(false);
         const offlineRes = await searchOfflineKnowledgeBase(text);
         replyContent = offlineRes.text;
         diagnosticData = offlineRes.data;
+        isAiGenerated = false;
+        usedLiveConnection = false;
       }
 
-      const botMessageId = 'msg_' + (Date.now() + 1);
+      const botMessageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
       const botMessage: ChatMessage = {
         id: botMessageId,
         role: 'assistant',
         content: replyContent,
         diagnosticData,
         timestamp: Date.now(),
-        synced: isOnline,
+        synced: usedLiveConnection,
         isOfflineGenerated: !isAiGenerated,
       };
 
-      await db.chatMessages.add(botMessage);
+      await db.chatMessages.put(botMessage);
       setMessages((prev) => [...prev, botMessage]);
 
       // Auto Speak-Back if enabled
@@ -369,9 +388,10 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         playSpeechForMessage(botMessageId, replyContent);
       }
     } catch (err) {
-      console.error('Chat error:', err);
+      console.error('Critical Chat error, executing emergency offline fallback:', err);
+      setIsOnline(false);
       const fallback = await searchOfflineKnowledgeBase(text);
-      const botMessageId = 'msg_' + (Date.now() + 1);
+      const botMessageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
       const botMessage: ChatMessage = {
         id: botMessageId,
         role: 'assistant',
@@ -381,7 +401,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         synced: false,
         isOfflineGenerated: true,
       };
-      await db.chatMessages.add(botMessage);
+      await db.chatMessages.put(botMessage);
       setMessages((prev) => [...prev, botMessage]);
 
       if (autoSpeakBack) {
@@ -582,10 +602,10 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       </div>
 
       {/* 2. Messages Scroll Container */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 py-1">
+      <div className="flex-1 overflow-y-auto space-y-4 pr-1 py-2">
         {/* Sample Question Chips if short history */}
         {messages.length <= 2 && (
-          <div className="p-3.5 bg-cyan-50/70 rounded-2xl border border-farm-cyan/30 space-y-2.5 animate-in fade-in duration-200">
+          <div className="p-4 bg-cyan-50/80 rounded-2xl border border-farm-cyan/30 space-y-2.5 animate-in fade-in duration-200">
             <div className="flex items-center gap-1.5 text-xs font-black text-farm-navy uppercase tracking-wider">
               <HelpCircle className="w-4 h-4 text-farm-cyan" />
               <span>Common Smallholder Questions & Quick Diagnosis</span>
@@ -614,21 +634,49 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
           return (
             <div
               key={msg.id}
-              className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-2.5 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
-                <div className="w-9 h-9 rounded-xl bg-farm-navy text-farm-cyan flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                <div className="w-10 h-10 rounded-2xl bg-farm-navy text-farm-cyan flex items-center justify-center shrink-0 mt-0.5 shadow-sm ring-2 ring-farm-cyan/20">
                   <Bot className="w-5 h-5 stroke-[2.4]" />
                 </div>
               )}
 
               <div
-                className={`max-w-[90%] sm:max-w-[80%] rounded-2xl p-4 shadow-xs relative group ${
+                className={`max-w-[92%] sm:max-w-[82%] rounded-3xl p-4 sm:p-5 shadow-sm relative group transition-all ${
                   isUser
-                    ? 'bg-farm-navy text-white rounded-br-xs'
-                    : 'bg-white text-slate-900 rounded-bl-xs border border-slate-200'
+                    ? 'bg-farm-navy text-white rounded-tr-xs border border-slate-700/60 ring-1 ring-white/10'
+                    : 'bg-white text-slate-900 rounded-tl-xs border border-slate-200 shadow-xs'
                 }`}
               >
+                {/* Sender Header Pill */}
+                <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-white/15 dark:border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    {isUser ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-farm-cyan">
+                        <User className="w-3.5 h-3.5 text-farm-cyan" />
+                        <span>You (Farmer)</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-farm-navy">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>FarmChat AI Advisor</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div
+                    className={`text-[11px] font-semibold ${
+                      isUser ? 'text-slate-300' : 'text-slate-400'
+                    }`}
+                  >
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+
                 {/* Intent & Mode Badge for Assistant */}
                 {!isUser && diag && (
                   <div className="flex flex-wrap items-center gap-2 mb-2.5 pb-2 border-b border-slate-100">
@@ -649,12 +697,16 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
 
                 {/* User Photo Attachment Preview */}
                 {msg.mediaAttachment && (
-                  <div className="mb-2.5 rounded-xl overflow-hidden max-h-56 border border-white/20">
+                  <div className="mb-3 rounded-2xl overflow-hidden max-h-60 border-2 border-white/30 shadow-md">
                     <img
                       src={URL.createObjectURL(msg.mediaAttachment)}
-                      alt="Attached photo"
-                      className="w-full h-full object-cover"
+                      alt="Farmer crop or livestock photo"
+                      className="w-full h-full object-cover max-h-60"
                     />
+                    <div className="p-1.5 bg-black/40 text-[11px] text-white font-medium flex items-center gap-1 px-2.5">
+                      <Camera className="w-3.5 h-3.5 text-farm-cyan" />
+                      <span>Farm diagnosis photo attached by farmer</span>
+                    </div>
                   </div>
                 )}
 
@@ -671,7 +723,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
 
                 {/* Structured Diagnosis Box if present */}
                 {!isUser && diag?.diagnosis?.most_likely && (
-                  <div className="mb-3 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                  <div className="mb-3 p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/90">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="text-xs font-bold text-emerald-950 uppercase tracking-wide flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -687,34 +739,40 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
                         </span>
                       )}
                     </div>
-                    <div className="text-base font-black text-emerald-950 mb-1.5">
+                    <div className="text-base sm:text-lg font-black text-emerald-950 mb-1">
                       {diag.diagnosis.most_likely}
                     </div>
 
                     {diag.diagnosis.other_possibilities &&
                       diag.diagnosis.other_possibilities.length > 0 && (
-                        <div className="text-[11px] text-emerald-800">
-                          <span className="font-semibold">Other possibilities: </span>
+                        <div className="text-[11px] text-emerald-800 font-medium">
+                          <span className="font-bold">Other possibilities: </span>
                           {diag.diagnosis.other_possibilities.join(', ')}
                         </div>
                       )}
                   </div>
                 )}
 
-                {/* Full Message Body */}
-                <div className="text-base leading-relaxed whitespace-pre-wrap font-medium text-slate-800">
-                  {msg.content}
+                {/* Full Message Body - High Contrast & Clearly Legible */}
+                <div
+                  className={`text-base leading-relaxed ${
+                    isUser
+                      ? 'text-white font-medium drop-shadow-xs'
+                      : 'text-slate-900 font-medium'
+                  }`}
+                >
+                  <HumanFormattedMessage content={msg.content} isUser={isUser} />
                 </div>
 
                 {/* Follow-up question quick action */}
                 {!isUser && diag?.follow_up_question && (
-                  <div className="mt-3 p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-2">
+                  <div className="mt-3 p-3 rounded-2xl bg-blue-50 border border-blue-200 flex items-start gap-2.5">
                     <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <div className="text-xs font-bold text-blue-900 mb-0.5">
+                      <div className="text-xs font-bold text-blue-950 mb-0.5">
                         Follow-up question for precise diagnosis:
                       </div>
-                      <div className="text-xs text-blue-800 mb-1.5 font-medium">
+                      <div className="text-xs text-blue-900 mb-1.5 font-medium italic">
                         "{diag.follow_up_question}"
                       </div>
                       <button
@@ -723,9 +781,9 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
                           setInputQuery(`Regarding: ${diag.follow_up_question} - `);
                           document.getElementById('farmchat-text-input')?.focus();
                         }}
-                        className="text-[11px] font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                        className="text-xs font-bold text-blue-700 hover:text-blue-950 underline cursor-pointer inline-flex items-center gap-1"
                       >
-                        Tap here to reply to this question
+                        <span>Tap here to answer this question</span>
                       </button>
                     </div>
                   </div>
@@ -733,7 +791,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
 
                 {/* Professional Escalation Warning Banner */}
                 {!isUser && diag?.escalate_to_professional && (
-                  <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-start gap-2.5">
+                  <div className="mt-3 p-3 rounded-2xl bg-amber-50 border border-amber-300 flex items-start gap-2.5">
                     <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div className="text-xs font-bold text-amber-950">
@@ -755,47 +813,40 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
                 )}
 
                 {/* Bottom Card Controls: Timestamp & Speak Out Loud Button */}
-                <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-slate-100">
-                  {!isUser && (
+                {!isUser && (
+                  <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => playSpeechForMessage(msg.id, msg.content)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                         isCurrentlySpeaking
                           ? 'bg-rose-100 text-rose-700 animate-pulse'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
                       }`}
                       title={isCurrentlySpeaking ? 'Stop speech' : 'Read advice aloud'}
                     >
                       {isCurrentlySpeaking ? (
                         <>
-                          <Square className="w-3 h-3 fill-rose-600" />
+                          <Square className="w-3.5 h-3.5 fill-rose-600" />
                           <span>Stop Voice</span>
                         </>
                       ) : (
                         <>
-                          <Volume2 className="w-3.5 h-3.5 text-farm-navy" />
+                          <Volume2 className="w-4 h-4 text-farm-navy" />
                           <span>Listen (Read Aloud)</span>
                         </>
                       )}
                     </button>
-                  )}
 
-                  <div
-                    className={`text-[11px] font-semibold ${
-                      isUser ? 'text-slate-300' : 'text-slate-400'
-                    }`}
-                  >
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      Farm Pro Diagnostic Engine
+                    </span>
                   </div>
-                </div>
+                )}
               </div>
 
               {isUser && (
-                <div className="w-9 h-9 rounded-xl bg-farm-cyan text-farm-navy flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                <div className="w-10 h-10 rounded-2xl bg-farm-cyan text-farm-navy flex items-center justify-center shrink-0 mt-0.5 shadow-sm ring-2 ring-farm-cyan/40">
                   <User className="w-5 h-5 stroke-[2.4]" />
                 </div>
               )}
@@ -805,14 +856,23 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
 
         {isTyping && (
           <div className="flex gap-2.5 justify-start">
-            <div className="w-9 h-9 rounded-xl bg-farm-navy text-farm-cyan flex items-center justify-center shrink-0">
-              <Bot className="w-5 h-5 animate-spin" />
+            <div className="w-10 h-10 rounded-2xl bg-farm-navy text-farm-cyan flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+              <Bot className="w-5 h-5" />
             </div>
-            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-farm-navy" />
-              <span className="text-sm font-bold text-slate-700">
-                FarmChat Advisor analyzing symptoms & farm context...
-              </span>
+            <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+              </div>
+              <div>
+                <span className="text-sm font-black text-farm-navy block">
+                  FarmChart is gathering info for your request......
+                </span>
+                <span className="text-xs text-slate-500 font-medium">
+                  {isOnline
+                    ? 'Retrieving latest agricultural data and expert farming advice'
+                    : 'Searching built-in offline crop & livestock knowledge base'}
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -821,29 +881,30 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       </div>
 
       {/* 3. Message Input Strip with Photo & Voice */}
-      <div className="mt-2 bg-white rounded-2xl p-2.5 shadow-md border border-slate-200 shrink-0">
+      <div className="mt-2 bg-white rounded-3xl p-3 shadow-lg border border-slate-200 shrink-0">
         {/* Attached Photo Chip */}
         {attachedPhoto && (
-          <div className="mb-2 p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between animate-in fade-in duration-150">
-            <div className="flex items-center gap-2">
+          <div className="mb-2.5 p-2 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between animate-in fade-in duration-150">
+            <div className="flex items-center gap-2.5">
               <img
                 src={URL.createObjectURL(attachedPhoto)}
                 alt="Selected"
-                className="w-11 h-11 rounded-lg object-cover border border-slate-300"
+                className="w-12 h-12 rounded-xl object-cover border border-slate-300 shadow-xs"
               />
               <div>
-                <span className="text-xs font-bold text-slate-800 block">
-                  Photo Attached for AI Vision Diagnosis
+                <span className="text-xs font-bold text-slate-900 block">
+                  📷 Photo Attached for AI Diagnostic Vision
                 </span>
-                <span className="text-[10px] text-slate-500">
-                  Ready to diagnose crop leaves, lesions, pest, or animal symptoms
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Review your question below, then tap Send for AI symptom diagnosis
                 </span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setAttachedPhoto(null)}
-              className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-slate-200 transition-colors"
+              className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-slate-200 transition-colors cursor-pointer"
+              title="Remove photo"
             >
               <X className="w-5 h-5" />
             </button>
@@ -868,49 +929,57 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
               type="button"
               id="farmchat-camera-btn"
               onClick={() => document.getElementById('farmchat-photo-input')?.click()}
-              className="min-h-[48px] min-w-[48px] p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-farm-navy flex items-center justify-center transition-colors cursor-pointer"
+              className="min-h-[48px] min-w-[48px] p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-farm-navy flex items-center justify-center transition-colors cursor-pointer shadow-xs"
               title="Attach Photo for Diagnosis"
             >
               <Camera className="w-6 h-6 stroke-[2.2] text-farm-navy" />
             </button>
           </div>
 
-          {/* Voice Input Button with Voice Consultation auto-send support */}
+          {/* Voice Input Button: Transcribes directly into the input box for farmer review */}
           <VoiceInputButton
             onTranscript={(text) => {
-              if (voiceMode === 'transcribe') {
-                setInputQuery((prev) => (prev ? `${prev} ${text}` : text));
-              } else {
-                setInputQuery(text);
-              }
-            }}
-            onFinalTranscript={(finalText) => {
-              if (voiceMode === 'voice_search' && finalText.trim()) {
-                handleSendMessage(finalText.trim());
-              }
+              setInputQuery((prev) => {
+                if (!prev) return text;
+                // If it already ends with text, don't duplicate
+                if (prev.endsWith(text) || text.startsWith(prev)) return text;
+                return `${prev} ${text}`;
+              });
             }}
             className="shrink-0"
           />
 
-          {/* Text Input */}
-          <input
-            type="text"
-            id="farmchat-text-input"
-            value={inputQuery}
-            onChange={(e) => setInputQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSendMessage();
+          {/* Text Input - Clearly editable before sending */}
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              id="farmchat-text-input"
+              value={inputQuery}
+              onChange={(e) => setInputQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder={
+                attachedPhoto
+                  ? 'Add notes about this photo or tap Send...'
+                  : 'Type or tap mic to speak into message box...'
               }
-            }}
-            placeholder={
-              voiceMode === 'voice_search'
-                ? 'Type or tap mic for voice consultation (EN / Shona / Ndebele)...'
-                : 'Ask advice or attach photo for crop/animal diagnosis...'
-            }
-            className="flex-1 min-h-[48px] px-3.5 py-2 text-base font-medium rounded-xl border-2 border-slate-300 focus:border-farm-navy outline-none bg-slate-50"
-          />
+              className="w-full min-h-[48px] px-4 py-2.5 text-base font-semibold rounded-2xl border-2 border-slate-300 focus:border-farm-navy focus:bg-white outline-none bg-slate-50 text-slate-900 transition-colors"
+            />
+            {inputQuery && (
+              <button
+                type="button"
+                onClick={() => setInputQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                title="Clear input"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
           {/* Send Button */}
           <button
@@ -918,10 +987,18 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
             id="farmchat-send-btn"
             disabled={!inputQuery.trim() && !attachedPhoto}
             onClick={() => handleSendMessage()}
-            className="min-h-[48px] min-w-[48px] px-3.5 py-2.5 bg-farm-navy hover:bg-farm-navy-light disabled:opacity-40 text-white rounded-xl flex items-center justify-center gap-1 font-bold transition-colors cursor-pointer shrink-0"
+            className="min-h-[48px] min-w-[52px] px-4 py-2.5 bg-farm-navy hover:bg-slate-800 disabled:opacity-40 text-white rounded-2xl flex items-center justify-center gap-1.5 font-extrabold text-sm transition-all cursor-pointer shrink-0 shadow-sm active:scale-95"
+            title="Send query to FarmChat Advisor"
           >
-            <Send className="w-5 h-5 text-farm-cyan" />
+            <Send className="w-5 h-5 text-farm-cyan stroke-[2.5]" />
+            <span className="hidden sm:inline">Send</span>
           </button>
+        </div>
+
+        {/* Informative Guidance Banner for Voice & Check */}
+        <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium px-2 pt-2">
+          <span>🎤 Speak into mic or type → Check accuracy → Tap Send</span>
+          <span>Languages: EN • Shona • Ndebele</span>
         </div>
       </div>
 

@@ -92,7 +92,7 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
       : cropType.trim() || 'Maize';
 
     const newCycle: CropCycle = {
-      id: 'cycle_' + Date.now(),
+      id: 'cycle_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       farmId: farm.id,
       fieldId: fieldName,
       cropType: finalCropName,
@@ -110,7 +110,7 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
       createdAt: Date.now(),
     };
 
-    await db.cropCycles.add(newCycle);
+    await db.cropCycles.put(newCycle);
     onSaved(newCycle);
   };
 

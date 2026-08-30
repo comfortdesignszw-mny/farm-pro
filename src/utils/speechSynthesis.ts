@@ -8,13 +8,18 @@ export function isSpeechSynthesisSupported(): boolean {
 
 export function cleanTextForSpeech(text: string): string {
   return text
+    .replace(/\[\d+\]/g, '') // remove citation brackets
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // remove markdown links
     .replace(/\*\*([^*]+)\*\*/g, '$1') // remove bold
     .replace(/\*([^*]+)\*/g, '$1') // remove italics
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
     .replace(/`([^`]+)`/g, '$1') // remove code blocks
     .replace(/^#+\s*(.+)$/gm, '$1.') // replace headings with a sentence
-    .replace(/•\s*/g, ', ') // convert bullets to pauses
+    .replace(/[•\-\*\+]\s*/g, ', ') // convert bullets to natural pauses
     .replace(/https?:\/\/\S+/g, '') // remove urls
     .replace(/[\n\r]+/g, '. ') // replace newlines with pauses
+    .replace(/[*#~`_]/g, '') // strip any stray formatting characters
     .replace(/\s+/g, ' ')
     .trim();
 }

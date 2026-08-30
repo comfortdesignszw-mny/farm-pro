@@ -68,7 +68,7 @@ export const AddCropInputModal: React.FC<AddCropInputModalProps> = ({
     }
 
     const record: InputRecord = {
-      id: 'input_' + Date.now(),
+      id: 'input_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       cropCycleId: cycleId || activeCycles[0]?.id || 'default_cycle',
       type: inputType,
       subtype: subtype.trim() || inputType,
@@ -82,7 +82,7 @@ export const AddCropInputModal: React.FC<AddCropInputModalProps> = ({
       createdAt: Date.now(),
     };
 
-    await db.inputRecords.add(record);
+    await db.inputRecords.put(record);
     onSaved(record);
   };
 

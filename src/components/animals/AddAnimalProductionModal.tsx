@@ -53,7 +53,7 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
     e.preventDefault();
 
     const record: AnimalProductionRecord = {
-      id: 'prod_' + Date.now(),
+      id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       animalId: animalId || animals[0]?.id || 'default_animal',
       productType,
       quantity: Number(quantity) || 0,
@@ -65,7 +65,7 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
       createdAt: Date.now(),
     };
 
-    await db.animalProductionRecords.add(record);
+    await db.animalProductionRecords.put(record);
     onSaved(record);
   };
 

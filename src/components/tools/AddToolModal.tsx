@@ -35,7 +35,7 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
     e.preventDefault();
 
     const newTool: Tool = {
-      id: 'tool_' + Date.now(),
+      id: 'tool_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       farmId: farm.id,
       name: name.trim() || 'Farm Tool',
       category,
@@ -48,7 +48,7 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
       createdAt: Date.now(),
     };
 
-    await db.tools.add(newTool);
+    await db.tools.put(newTool);
     onSaved(newTool);
   };
 

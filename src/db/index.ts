@@ -10,6 +10,7 @@ import {
   AnimalFeedRecord,
   AnimalProductionRecord,
   Tool,
+  FarmTask,
   ChatMessage,
   AdvisoryItem,
   AppSettings,
@@ -27,6 +28,7 @@ export class FarmProDatabase extends Dexie {
   animalFeedRecords!: Table<AnimalFeedRecord, string>;
   animalProductionRecords!: Table<AnimalProductionRecord, string>;
   tools!: Table<Tool, string>;
+  farmTasks!: Table<FarmTask, string>;
   chatMessages!: Table<ChatMessage, string>;
   advisoryCache!: Table<AdvisoryItem, number>;
 
@@ -43,6 +45,7 @@ export class FarmProDatabase extends Dexie {
       animalFeedRecords: 'id, animalId, date, createdAt',
       animalProductionRecords: 'id, animalId, productType, date, createdAt',
       tools: 'id, farmId, name, category, condition, createdAt',
+      farmTasks: 'id, farmId, targetType, targetId, category, dueDate, isCompleted, createdAt',
       chatMessages: 'id, role, timestamp, synced',
       advisoryCache: '++id, topic, category, language, *keywords',
     });
@@ -55,9 +58,17 @@ export const db = new FarmProDatabase();
  * Seed initial advisory cache if empty
  */
 export async function seedAdvisoryCacheIfNeeded(): Promise<void> {
-  const count = await db.advisoryCache.count();
-  if (count === 0) {
-    await db.advisoryCache.bulkAdd(SEED_ADVISORY_DATA as any);
+  try {
+    const count = await db.advisoryCache.count();
+    if (count === 0) {
+      const seeded = SEED_ADVISORY_DATA.map((item, index) => ({
+        id: index + 1,
+        ...item,
+      }));
+      await db.advisoryCache.bulkPut(seeded as any);
+    }
+  } catch (err) {
+    console.warn('Advisory cache seeding skipped or already initialized:', err);
   }
 }
 
@@ -85,6 +96,7 @@ export async function resetAllFarmData(): Promise<void> {
     db.animalFeedRecords,
     db.animalProductionRecords,
     db.tools,
+    db.farmTasks,
     db.chatMessages
   ], async () => {
     await db.farms.clear();
@@ -97,6 +109,7 @@ export async function resetAllFarmData(): Promise<void> {
     await db.animalFeedRecords.clear();
     await db.animalProductionRecords.clear();
     await db.tools.clear();
+    await db.farmTasks.clear();
     await db.chatMessages.clear();
   });
   localStorage.removeItem('farmpro_onboarding_completed');
@@ -117,6 +130,7 @@ export async function exportDatabaseBackup(): Promise<string> {
     animalFeedRecords,
     animalProductionRecords,
     tools,
+    farmTasks,
     chatMessages,
     settings,
   ] = await Promise.all([
@@ -130,6 +144,7 @@ export async function exportDatabaseBackup(): Promise<string> {
     db.animalFeedRecords.toArray(),
     db.animalProductionRecords.toArray(),
     db.tools.toArray(),
+    db.farmTasks.toArray(),
     db.chatMessages.toArray(),
     getAppSettings(),
   ]);
@@ -150,6 +165,7 @@ export async function exportDatabaseBackup(): Promise<string> {
     animalFeedRecords,
     animalProductionRecords: animalProductionRecords.map(p => ({ ...p, photo: undefined })),
     tools: tools.map(t => ({ ...t, photo: undefined })),
+    farmTasks,
     chatMessages: chatMessages.map(m => ({ ...m, mediaAttachment: undefined })),
   };
 
@@ -171,6 +187,7 @@ export interface ImportBackupResult {
     feeds: number;
     productions: number;
     tools: number;
+    tasks?: number;
     messages: number;
   };
 }
@@ -222,6 +239,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
       ? data.animalProductionRecords
       : [];
     const rawTools: Tool[] = Array.isArray(data.tools) ? data.tools : [];
+    const rawTasks: FarmTask[] = Array.isArray(data.farmTasks) ? data.farmTasks : [];
     const rawMessages: ChatMessage[] = Array.isArray(data.chatMessages)
       ? data.chatMessages
       : [];
@@ -231,7 +249,8 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
       rawFarms.length === 0 &&
       rawCrops.length === 0 &&
       rawAnimals.length === 0 &&
-      rawTools.length === 0
+      rawTools.length === 0 &&
+      rawTasks.length === 0
     ) {
       return {
         success: false,
@@ -253,6 +272,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         db.animalFeedRecords,
         db.animalProductionRecords,
         db.tools,
+        db.farmTasks,
         db.chatMessages,
       ],
       async () => {
@@ -266,6 +286,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         await db.animalFeedRecords.clear();
         await db.animalProductionRecords.clear();
         await db.tools.clear();
+        await db.farmTasks.clear();
         await db.chatMessages.clear();
 
         if (rawFarms.length > 0) await db.farms.bulkPut(rawFarms);
@@ -278,6 +299,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         if (rawFeeds.length > 0) await db.animalFeedRecords.bulkPut(rawFeeds);
         if (rawProductions.length > 0) await db.animalProductionRecords.bulkPut(rawProductions);
         if (rawTools.length > 0) await db.tools.bulkPut(rawTools);
+        if (rawTasks.length > 0) await db.farmTasks.bulkPut(rawTasks);
         if (rawMessages.length > 0) await db.chatMessages.bulkPut(rawMessages);
       }
     );
@@ -306,6 +328,7 @@ export async function importDatabaseBackup(jsonString: string): Promise<ImportBa
         feeds: rawFeeds.length,
         productions: rawProductions.length,
         tools: rawTools.length,
+        tasks: rawTasks.length,
         messages: rawMessages.length,
       },
     };
