@@ -28,8 +28,8 @@ export const Header: React.FC<HeaderProps> = ({ farm, onOpenSettings }) => {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
 
-  // Hook for 10-minute active geolocation weather updates
-  const { weather, isLoading: isWeatherLoading, refreshWeather } = useWeather(600000);
+  // Local offline weather state with explicit manual refresh
+  const { weather, isLoading: isWeatherLoading, refreshWeather } = useWeather();
 
   // Update clock every minute
   useEffect(() => {

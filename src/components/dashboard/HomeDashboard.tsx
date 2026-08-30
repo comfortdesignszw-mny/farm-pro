@@ -114,6 +114,25 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const activeCropsCount = cropCycles.filter((c) => c.status === 'active').length;
   const totalLivestockHead = animals.reduce((acc, curr) => acc + (curr.batchSize || 0), 0);
 
+  // Harvest Value calculations (Actual harvest value + Projected standing crop value)
+  const totalHarvestValue = yieldRecords.reduce((acc, curr) => {
+    if (curr.totalEstimatedValue && curr.totalEstimatedValue > 0) {
+      return acc + curr.totalEstimatedValue;
+    }
+    if (curr.sellingPricePerUnit && curr.sellingPricePerUnit > 0) {
+      return acc + curr.quantity * curr.sellingPricePerUnit;
+    }
+    const parentCycle = cropCycles.find((c) => c.id === curr.cropCycleId);
+    if (parentCycle?.sellingPricePerUnit && parentCycle.sellingPricePerUnit > 0) {
+      return acc + curr.quantity * parentCycle.sellingPricePerUnit;
+    }
+    return acc;
+  }, 0);
+
+  const standingCropEstimatedValue = cropCycles
+    .filter((c) => c.status === 'active' && c.expectedYieldQuantity && c.sellingPricePerUnit)
+    .reduce((acc, curr) => acc + (curr.expectedYieldQuantity || 0) * (curr.sellingPricePerUnit || 0), 0);
+
   return (
     <div className="pb-24 max-w-4xl mx-auto px-4 py-4 space-y-6">
       {/* 1. QUICK-ADD STRIP (4 Large Buttons: Crop, Input, Yield, Animal) */}
@@ -306,18 +325,34 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </span>
         </div>
 
-        {/* Metric 4: Total Harvested */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        {/* Metric 4: Total Harvested with Estimated Revenue */}
+        <div
+          onClick={() => onChangeTab('crops')}
+          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm cursor-pointer hover:border-farm-cyan transition-colors"
+        >
           <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-bold uppercase">{t('dashboard.total_harvest')}</span>
             <Wheat className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-farm-navy">
+          <div className="text-2xl sm:text-3xl font-black text-farm-navy flex items-baseline gap-1">
             {totalYieldBags}
+            <span className="text-xs font-bold text-slate-500 font-normal">units</span>
           </div>
-          <span className="text-xs text-slate-500 font-semibold mt-0.5 block truncate">
-            Units harvested
-          </span>
+          <div className="mt-1">
+            {totalHarvestValue > 0 ? (
+              <div className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 border border-emerald-200 truncate max-w-full">
+                <span>≈ ${totalHarvestValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} value</span>
+              </div>
+            ) : standingCropEstimatedValue > 0 ? (
+              <div className="text-[11px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md inline-block truncate max-w-full border border-amber-200">
+                Est. Field: ${standingCropEstimatedValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </div>
+            ) : (
+              <span className="text-xs text-slate-500 font-semibold block truncate">
+                {yieldRecords.length} harvest logs
+              </span>
+            )}
+          </div>
         </div>
       </section>
 

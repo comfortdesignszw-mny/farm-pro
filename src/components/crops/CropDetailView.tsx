@@ -70,6 +70,18 @@ export const CropDetailView: React.FC<CropDetailViewProps> = ({
   const totalCost = inputs.reduce((acc, curr) => acc + (curr.cost || 0), 0);
   const totalYield = yields.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
+  const actualRevenue = yields.reduce((sum, item) => {
+    if (item.totalEstimatedValue && item.totalEstimatedValue > 0) return sum + item.totalEstimatedValue;
+    if (item.sellingPricePerUnit && item.sellingPricePerUnit > 0) return sum + (item.quantity * item.sellingPricePerUnit);
+    if (cycle.sellingPricePerUnit && cycle.sellingPricePerUnit > 0) return sum + (item.quantity * cycle.sellingPricePerUnit);
+    return sum;
+  }, 0);
+
+  const projectedRevenue =
+    cycle.expectedYieldQuantity && cycle.sellingPricePerUnit
+      ? cycle.expectedYieldQuantity * cycle.sellingPricePerUnit
+      : undefined;
+
   const plantDate = new Date(cycle.plantingDate);
   const daysGrowing = Math.floor((Date.now() - plantDate.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -163,7 +175,7 @@ export const CropDetailView: React.FC<CropDetailViewProps> = ({
               <p className="text-base font-semibold text-slate-600 mt-0.5">
                 {cycle.fieldId} • {cycle.fieldSize || farm.size} {farm.sizeUnit}
               </p>
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-500 mt-2">
+              <div className="flex items-center gap-3 text-xs font-bold text-slate-500 mt-2 flex-wrap">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" />
                   Planted: {cycle.plantingDate}
@@ -172,17 +184,25 @@ export const CropDetailView: React.FC<CropDetailViewProps> = ({
                 <span className="text-emerald-700 font-extrabold">
                   {t('crops.days_old', { days: Math.max(0, daysGrowing) })}
                 </span>
+                {cycle.sellingPricePerUnit && (
+                  <>
+                    <span>•</span>
+                    <span className="text-farm-navy bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      💰 ${cycle.sellingPricePerUnit} / {cycle.sellingPriceUnit === 'bags_50kg' ? '50kg bag' : cycle.sellingPriceUnit || 'unit'}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           {/* Quick Metrics */}
-          <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 sm:w-64">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200 sm:w-auto">
             <div>
               <div className="text-xs font-bold text-slate-500 uppercase">
                 {t('common.cost')}
               </div>
-              <div className="text-xl font-black text-farm-navy">
+              <div className="text-lg sm:text-xl font-black text-rose-700">
                 ${totalCost.toFixed(0)}
               </div>
             </div>
@@ -190,8 +210,16 @@ export const CropDetailView: React.FC<CropDetailViewProps> = ({
               <div className="text-xs font-bold text-slate-500 uppercase">
                 {t('common.yield')}
               </div>
-              <div className="text-xl font-black text-emerald-700">
+              <div className="text-lg sm:text-xl font-black text-emerald-700">
                 {totalYield}
+              </div>
+            </div>
+            <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-slate-200 pt-1.5 sm:pt-0 sm:pl-2.5">
+              <div className="text-xs font-bold text-slate-500 uppercase">
+                {actualRevenue > 0 ? 'Harvest Value' : 'Est. Potential'}
+              </div>
+              <div className="text-lg sm:text-xl font-black text-farm-navy">
+                ${(actualRevenue > 0 ? actualRevenue : (projectedRevenue || 0)).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </div>
             </div>
           </div>
@@ -348,6 +376,11 @@ export const CropDetailView: React.FC<CropDetailViewProps> = ({
                 </div>
 
                 <div className="text-right shrink-0">
+                  {(item.totalEstimatedValue || (item.sellingPricePerUnit && item.quantity) || (cycle.sellingPricePerUnit && item.quantity)) ? (
+                    <div className="text-base font-black text-emerald-800">
+                      ${(item.totalEstimatedValue || ((item.sellingPricePerUnit || cycle.sellingPricePerUnit || 0) * item.quantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  ) : null}
                   <div className="text-xs text-slate-500 font-bold">
                     Harvested: {item.date}
                   </div>

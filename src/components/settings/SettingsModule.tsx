@@ -638,6 +638,42 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         </div>
       </section>
 
+      {/* 5. 100% Offline Standalone PWA Architecture Status */}
+      <section className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-black text-farm-navy flex items-center gap-2">
+            <Smartphone className="w-5 h-5 text-farm-cyan" />
+            <span>Offline PWA & Local Storage Sandbox</span>
+          </h3>
+          <span className="text-xs font-bold text-cyan-800 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-farm-cyan" />
+            Standalone Ready
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-semibold text-slate-700">
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+            <div className="font-bold text-farm-navy flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Zero-HTTP Startup</span>
+            </div>
+            <p className="text-slate-600 font-medium leading-relaxed">
+              The application loads 100% from local IndexedDB cache and browser sandbox with no required network handshake.
+            </p>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+            <div className="font-bold text-farm-navy flex items-center gap-1.5">
+              <HardDrive className="w-4 h-4 text-cyan-600" />
+              <span>Network Isolation</span>
+            </div>
+            <p className="text-slate-600 font-medium leading-relaxed">
+              Network calls are strictly isolated to FarmChat AI Advisor queries and manual data syncing.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* 5. Reset Data Section */}
       <section className="bg-rose-50 rounded-2xl p-5 border border-rose-200 space-y-3">
         <h3 className="text-base font-black text-rose-900 flex items-center gap-2">

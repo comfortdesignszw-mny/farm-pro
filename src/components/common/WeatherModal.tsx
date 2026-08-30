@@ -114,8 +114,11 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
                 <span className="font-bold text-farm-navy">{formattedTime}</span>
               </div>
               <div className="flex items-center justify-between pt-1 border-t border-slate-200">
-                <span>Auto-refresh:</span>
-                <span className="text-emerald-700 font-extrabold">Every 10 min active</span>
+                <span>Storage Mode:</span>
+                <span className="text-emerald-700 font-extrabold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  100% Offline Local Cache
+                </span>
               </div>
             </div>
 
@@ -128,7 +131,7 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
                 className="flex-1 min-h-[48px] py-3 px-4 rounded-xl bg-farm-navy hover:bg-farm-navy-light text-white font-bold text-base flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-70 transition-all"
               >
                 <RefreshCw className={`w-4 h-4 text-farm-cyan ${isLoading ? 'animate-spin' : ''}`} />
-                <span>{isLoading ? 'Updating Weather...' : 'Refresh Now'}</span>
+                <span>{isLoading ? 'Checking Satellites...' : 'Check Live (Requires Network)'}</span>
               </button>
 
               <button

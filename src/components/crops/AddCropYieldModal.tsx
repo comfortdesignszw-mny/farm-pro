@@ -27,6 +27,7 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
   const [cycleId, setCycleId] = useState<string>(selectedCycleId || activeCycles[0]?.id || '');
   const [quantity, setQuantity] = useState<number>(45);
   const [unit, setUnit] = useState('bags_50kg');
+  const [sellingPricePerUnit, setSellingPricePerUnit] = useState<number | ''>('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
@@ -36,6 +37,10 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
   const currentCycle = activeCycles.find((c) => c.id === cycleId) || activeCycles[0];
   const fieldSize = currentCycle?.fieldSize || farm.size || 1;
   const quantityPerHectare = fieldSize > 0 ? Number((quantity / fieldSize).toFixed(2)) : quantity;
+  const totalValue =
+    typeof sellingPricePerUnit === 'number' && sellingPricePerUnit > 0
+      ? Number((sellingPricePerUnit * quantity).toFixed(2))
+      : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +51,8 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
       quantity: Number(quantity) || 0,
       unit,
       quantityPerHectare,
+      sellingPricePerUnit: sellingPricePerUnit !== '' ? Number(sellingPricePerUnit) : undefined,
+      totalEstimatedValue: totalValue,
       date,
       photo: photo || undefined,
       notes: notes.trim(),
@@ -144,6 +151,38 @@ export const AddCropYieldModal: React.FC<AddCropYieldModalProps> = ({
             <span className="text-xs text-emerald-700 font-bold">
               Field: {fieldSize} {farm.sizeUnit}
             </span>
+          </div>
+
+          {/* Selling Price per Unit (Optional) */}
+          <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-bold text-farm-navy">
+                Selling Price ($ per {unit === 'bags_50kg' ? '50kg bag' : unit === 'buckets_20L' ? 'bucket' : unit}) {t('common.optional')}
+              </label>
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                Market Value
+              </span>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-base">$</span>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                value={sellingPricePerUnit}
+                onChange={(e) => setSellingPricePerUnit(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="e.g. 24.00"
+                className="w-full min-h-[44px] pl-8 pr-3 py-2 text-base font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white"
+              />
+            </div>
+            {totalValue !== undefined && (
+              <div className="p-2.5 rounded-xl bg-white border border-emerald-300 flex items-center justify-between text-xs font-bold">
+                <span className="text-emerald-900">Total Harvest Value:</span>
+                <span className="text-sm font-black text-emerald-800">
+                  ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Date */}
