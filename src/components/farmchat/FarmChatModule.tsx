@@ -3,6 +3,7 @@ import {
   MessageSquareQuote,
   Send,
   Camera,
+  Image as ImageIcon,
   X,
   Wifi,
   WifiOff,
@@ -29,11 +30,13 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db, getAppSettings } from '../../db';
-import { ChatMessage, Farm, DiagnosticData, AdvisorIntent } from '../../types';
+import { ChatMessage, Farm, DiagnosticData, AdvisorIntent, OfficerContact } from '../../types';
 import { VoiceInputButton } from '../common/VoiceInputButton';
 import { blobToBase64 } from '../../utils/imageCompressor';
 import { speakText, stopSpeech } from '../../utils/speechSynthesis';
 import { HumanFormattedMessage } from './HumanFormattedMessage';
+import { AgritexDirectoryModal } from '../common/AgritexDirectoryModal';
+import { AddEditOfficerModal } from '../common/AddEditOfficerModal';
 
 interface FarmChatModuleProps {
   farm: Farm;
@@ -47,6 +50,8 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [showAgritexModal, setShowAgritexModal] = useState(false);
+  const [showAddOfficerModal, setShowAddOfficerModal] = useState(false);
+  const [editingOfficer, setEditingOfficer] = useState<OfficerContact | null>(null);
 
   // Voice & TTS state
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
@@ -322,6 +327,27 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       }
 
       try {
+        // Retrieve live active crops and livestock batches to ground the AI diagnosis with precision
+        const activeCrops = await db.cropCycles.filter((c) => c.status === 'active').toArray();
+        const activeAnimals = await db.animals.filter((a) => a.status === 'active').toArray();
+
+        const cropsSummary =
+          activeCrops.length > 0
+            ? activeCrops
+                .map(
+                  (c) =>
+                    `${c.cropType} (${c.variety || 'Standard variety'}, planted: ${c.plantingDate}${c.fieldSize ? `, size: ${c.fieldSize}ha` : ''})`
+                )
+                .join(', ')
+            : farm.cropsSpecialized.join(', ');
+
+        const animalsSummary =
+          activeAnimals.length > 0
+            ? activeAnimals
+                .map((a) => `${a.species} (${a.breed || 'Standard'}, batch size: ${a.batchSize || 1}${a.tagOrName ? `, tag: ${a.tagOrName}` : ''})`)
+                .join(', ')
+            : undefined;
+
         // Robust 25-second timeout allowing low/2G/3G connections to complete
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 25000);
@@ -338,7 +364,8 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
               name: farm.name,
               size: `${farm.size} ${farm.sizeUnit}`,
               location: farm.location,
-              crops: farm.cropsSpecialized,
+              crops: cropsSummary,
+              livestock: animalsSummary,
             },
           }),
         });
@@ -538,6 +565,20 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setAutoSpeakBack((prev) => !prev)}
+            className={`px-2 py-1 rounded-xl border font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer ${
+              autoSpeakBack
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-slate-100 text-slate-600 border-slate-200'
+            }`}
+            title={autoSpeakBack ? 'Voice answers enabled (Auto-read responses)' : 'Voice answers muted'}
+          >
+            <Volume2 className={`w-3.5 h-3.5 ${autoSpeakBack ? 'text-emerald-700' : 'text-slate-400'}`} />
+            <span className="hidden sm:inline">{autoSpeakBack ? 'Voice Readout ON' : 'Muted'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowAgritexModal(true)}
@@ -882,13 +923,14 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         )}
 
         <div className="flex items-center gap-1.5">
-          {/* Photo attach button */}
-          <div className="shrink-0">
+          {/* Photo attach buttons: Camera & Device Gallery */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Camera Capture */}
             <input
               type="file"
               accept="image/*"
               capture="environment"
-              id="farmchat-photo-input"
+              id="farmchat-camera-input"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -898,24 +940,49 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
             <button
               type="button"
               id="farmchat-camera-btn"
-              onClick={() => document.getElementById('farmchat-photo-input')?.click()}
+              onClick={() => document.getElementById('farmchat-camera-input')?.click()}
               className="h-10 w-10 min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-farm-navy flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-              title="Attach Photo for Diagnosis"
+              title="Take Photo with Camera for Diagnosis"
             >
               <Camera className="w-5 h-5 stroke-[2.2] text-farm-navy" />
             </button>
+
+            {/* Device Gallery / File Upload */}
+            <input
+              type="file"
+              accept="image/*"
+              id="farmchat-gallery-input"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setAttachedPhoto(f);
+              }}
+            />
+            <button
+              type="button"
+              id="farmchat-gallery-btn"
+              onClick={() => document.getElementById('farmchat-gallery-input')?.click()}
+              className="h-10 w-10 min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-farm-navy flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+              title="Upload Image from Device"
+            >
+              <ImageIcon className="w-5 h-5 stroke-[2.2] text-farm-navy" />
+            </button>
           </div>
 
-          {/* Voice Input Button: Transcribes directly into the input box for farmer review */}
+          {/* Voice Input Button: Transcribes directly into the input box and supports rapid voice search */}
           <VoiceInputButton
             buttonSize="compact"
             onTranscript={(text) => {
               setInputQuery((prev) => {
                 if (!prev) return text;
-                // If it already ends with text, don't duplicate
                 if (prev.endsWith(text) || text.startsWith(prev)) return text;
                 return `${prev} ${text}`;
               });
+            }}
+            onFinalTranscript={(finalText) => {
+              if (finalText && finalText.trim()) {
+                handleSendMessage(finalText.trim());
+              }
             }}
             className="shrink-0"
           />
@@ -969,74 +1036,30 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
 
       {/* 4. AGRITEX & Veterinary Directory Modal */}
       {showAgritexModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 relative max-h-[85vh] overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setShowAgritexModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-            >
-              <X className="w-5 h-5" />
-            </button>
+        <AgritexDirectoryModal
+          isOpen={showAgritexModal}
+          onClose={() => setShowAgritexModal(false)}
+          onAddCustomOfficer={() => {
+            setEditingOfficer(null);
+            setShowAddOfficerModal(true);
+          }}
+          onEditCustomOfficer={(officer) => {
+            setEditingOfficer(officer);
+            setShowAddOfficerModal(true);
+          }}
+        />
+      )}
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
-                <PhoneCall className="w-6 h-6 stroke-[2.4]" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900">
-                  AGRITEX & Veterinary Directory
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  Official extension and emergency agricultural escalation
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3.5 text-sm">
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                <div className="font-bold text-emerald-950 mb-1 flex items-center gap-1.5">
-                  <Sprout className="w-4 h-4 text-emerald-700" />
-                  <span>AGRITEX Ward Extension Officers</span>
-                </div>
-                <p className="text-xs text-emerald-900 leading-relaxed font-medium">
-                  Located at every Rural District Council ward center and Growth Point. Contact your Ward Extension Officer for on-site soil sampling, armyworm trap reporting, and input distribution verification.
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200">
-                <div className="font-bold text-indigo-950 mb-1 flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-indigo-700" />
-                  <span>Department of Veterinary Services (DVS)</span>
-                </div>
-                <p className="text-xs text-indigo-900 leading-relaxed font-medium">
-                  Responsible for community dipping schedules, livestock brand inspections, movement permits, and compulsory vaccinations (Anthrax, Rabies, Foot and Mouth).
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
-                <div className="font-bold text-amber-950 mb-1 flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-700" />
-                  <span>Emergency Quarantine Protocols</span>
-                </div>
-                <ul className="text-xs text-amber-900 space-y-1 font-medium list-disc list-inside">
-                  <li>Isolate sick birds/animals in a secure, disinfected pen immediately.</li>
-                  <li>Do not move carcasses or infected crop plants off the farm.</li>
-                  <li>Disinfect boots with bleach or virucidal footbath at coop entrances.</li>
-                  <li>Never consume meat from animals that died of unknown sudden sickness.</li>
-                </ul>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAgritexModal(false)}
-              className="mt-5 w-full py-3 rounded-xl bg-farm-navy hover:bg-farm-navy-light text-white font-bold text-sm transition-colors cursor-pointer"
-            >
-              Close Directory
-            </button>
-          </div>
-        </div>
+      {/* Add / Edit Custom Officer Modal */}
+      {showAddOfficerModal && (
+        <AddEditOfficerModal
+          isOpen={showAddOfficerModal}
+          officerToEdit={editingOfficer}
+          onClose={() => setShowAddOfficerModal(false)}
+          onSaved={() => {
+            // Refreshes when directory is open
+          }}
+        />
       )}
     </div>
   );

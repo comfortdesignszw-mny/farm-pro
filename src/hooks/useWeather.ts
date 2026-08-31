@@ -3,12 +3,15 @@ import {
   WeatherData,
   getCachedWeather,
   fetchCurrentWeather,
+  getDefaultForecast,
+  generateAgroTips,
 } from '../utils/weather';
 
 export function useWeather() {
   const [weather, setWeather] = useState<WeatherData | null>(() => {
     const cached = getCachedWeather();
     if (cached) return cached;
+    const defaultForecast = getDefaultForecast();
     // Default offline fallback without any HTTP call
     return {
       temperature: 24,
@@ -22,6 +25,8 @@ export function useWeather() {
       longitude: 31.0335,
       lastUpdated: Date.now(),
       isOfflineCached: true,
+      forecast: defaultForecast,
+      agroTips: generateAgroTips(24, 8, 50, defaultForecast),
     };
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);

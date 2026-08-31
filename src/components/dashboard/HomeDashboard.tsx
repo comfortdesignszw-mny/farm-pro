@@ -42,6 +42,8 @@ import { AddQuickTaskModal } from './AddQuickTaskModal';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { BlobThumbnail } from '../common/BlobThumbnail';
 import { NavTab } from '../common/BottomNav';
+import { WeatherForecastCard } from './WeatherForecastCard';
+import { useWeather } from '../../hooks/useWeather';
 
 interface HomeDashboardProps {
   farm: Farm;
@@ -79,6 +81,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   // Confirmation feedback
   const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null);
+
+  // Real-time Agro-Weather Forecast & Tips
+  const { weather, isLoading: isWeatherLoading, refreshWeather } = useWeather();
 
   const loadDashboardData = async () => {
     const [c, i, y, a, h, tList, tasks] = await Promise.all([
@@ -214,7 +219,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   return (
     <div className="pb-24 max-w-4xl mx-auto px-4 py-4 space-y-6">
-      {/* 1. QUICK-ADD STRIP (Crop, Input, Yield, Animal, Task) */}
+      {/* 1. QUICK-ADD STRIP (Fast Action Bar on Top) */}
       <section id="dashboard-quick-add-strip">
         <div className="flex items-center justify-between mb-2.5">
           <h2 className="text-xl sm:text-2xl font-black text-farm-navy tracking-tight flex items-center gap-2">
@@ -304,8 +309,206 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </section>
 
-      {/* 2. UPCOMING TASKS & PLANT / ANIMAL HEALTH ALERTS */}
-      <section id="dashboard-upcoming-section" className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
+      {/* 2. STATISTIC CARDS SECTION (Active Crops, Total Livestock, Total Input Spent, Total Harvest) */}
+      <section id="dashboard-statistics-cards" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Metric 1: Active Crops */}
+        <div
+          id="stat-card-active-crops"
+          onClick={() => onChangeTab('crops')}
+          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm cursor-pointer hover:border-farm-cyan hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-xs font-bold uppercase">{t('dashboard.active_cycles')}</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Sprout className="w-4 h-4 stroke-[2.5]" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-farm-navy">
+            {activeCropsCount}
+          </div>
+          <span className="text-xs text-slate-500 font-semibold mt-0.5 block truncate">
+            {farm.size} {farm.sizeUnit} total
+          </span>
+        </div>
+
+        {/* Metric 2: Total Livestock */}
+        <div
+          id="stat-card-total-livestock"
+          onClick={() => onChangeTab('animals')}
+          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm cursor-pointer hover:border-farm-cyan hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-xs font-bold uppercase">{t('dashboard.total_animals')}</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <PawPrint className="w-4 h-4 stroke-[2.5]" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-farm-navy">
+            {totalLivestockHead}
+          </div>
+          <span className="text-xs text-slate-500 font-semibold mt-0.5 block truncate">
+            {animals.length} batches
+          </span>
+        </div>
+
+        {/* Metric 3: Total Inputs Spent */}
+        <div id="stat-card-inputs-spent" className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-xs font-bold uppercase">{t('dashboard.total_spent')}</span>
+            <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+              <DollarSign className="w-4 h-4 stroke-[2.5]" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-farm-navy">
+            ${totalInputsSpent.toFixed(0)}
+          </div>
+          <span className="text-xs text-slate-500 font-semibold mt-0.5 block truncate">
+            {inputRecords.length} records
+          </span>
+        </div>
+
+        {/* Metric 4: Total Harvest */}
+        <div
+          id="stat-card-total-harvest"
+          onClick={() => onChangeTab('crops')}
+          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm cursor-pointer hover:border-farm-cyan hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-xs font-bold uppercase">{t('dashboard.total_harvest')}</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Wheat className="w-4 h-4 stroke-[2.5]" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-farm-navy flex items-baseline gap-1">
+            {totalYieldBags}
+            <span className="text-xs font-bold text-slate-500 font-normal">units</span>
+          </div>
+          <div className="mt-1">
+            {totalHarvestValue > 0 ? (
+              <div className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 border border-emerald-200 truncate max-w-full">
+                <span>≈ ${totalHarvestValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} value</span>
+              </div>
+            ) : standingCropEstimatedValue > 0 ? (
+              <div className="text-[11px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md inline-block truncate max-w-full border border-amber-200">
+                Est. Field: ${standingCropEstimatedValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </div>
+            ) : (
+              <span className="text-xs text-slate-500 font-semibold block truncate">
+                {yieldRecords.length} harvest logs
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. AGRO-WEATHER FORECAST & REGIONAL TIPS DISPLAY (Compact) */}
+      <WeatherForecastCard
+        weather={weather}
+        isLoading={isWeatherLoading}
+        onRefresh={refreshWeather}
+        farmLocation={farm.location}
+      />
+
+      {/* 4. ACTIVE CROPS SECTION */}
+      <section id="dashboard-active-crops-section" className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+          <h3 className="text-lg sm:text-xl font-black text-farm-navy flex items-center gap-2">
+            <Wheat className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+            <span>{t('crops.active_crops')}</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+              {activeCropsCount} in ground
+            </span>
+          </h3>
+          <button
+            type="button"
+            onClick={() => onChangeTab('crops')}
+            className="text-xs sm:text-sm font-extrabold text-farm-cyan hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>{t('common.view_details')}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {cropCycles.length === 0 ? (
+          <div className="p-6 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center mx-auto">
+              <Sprout className="w-6 h-6 stroke-[2]" />
+            </div>
+            <p className="text-base font-bold text-slate-700">
+              {t('crops.no_crops_yet')}
+            </p>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Plant your first field batch to track days to maturity, pest sprays, fertilizer inputs, and harvest projections.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsAddCycleOpen(true)}
+              className="mt-2 inline-flex items-center gap-2 min-h-[44px] px-5 py-2 rounded-xl bg-farm-navy hover:bg-slate-800 text-farm-cyan font-extrabold text-xs sm:text-sm shadow-sm cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>{t('crops.new_crop_btn')}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {cropCycles.slice(0, 3).map((cycle) => {
+              const plantDate = new Date(cycle.plantingDate);
+              const daysGrowing = Math.floor((now.getTime() - plantDate.getTime()) / (1000 * 60 * 60 * 24));
+              const cycleInputs = inputRecords.filter((i) => i.cropCycleId === cycle.id);
+              const cycleSpend = cycleInputs.reduce((acc, curr) => acc + (curr.cost || 0), 0);
+
+              return (
+                <div
+                  key={cycle.id}
+                  onClick={() => {
+                    onChangeTab('crops');
+                    if (onSelectCrop) onSelectCrop(cycle.id);
+                  }}
+                  className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 hover:border-farm-cyan hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <BlobThumbnail
+                      blob={cycle.photo}
+                      fallbackEmoji="🌾"
+                      fallbackBgClass="bg-emerald-100 text-emerald-800"
+                      alt={cycle.cropType}
+                      className="w-12 h-12 rounded-2xl shrink-0 shadow-2xs"
+                    />
+                    <div className="min-w-0">
+                      <div className="text-base sm:text-lg font-black text-farm-navy truncate">
+                        {cycle.cropType} {cycle.variety ? `• ${cycle.variety}` : ''}
+                      </div>
+                      <div className="text-xs sm:text-sm text-slate-500 font-semibold truncate flex items-center gap-2 mt-0.5">
+                        <span className="font-bold text-slate-700">{cycle.fieldId}</span>
+                        <span>•</span>
+                        <span>{t('crops.days_old', { days: Math.max(0, daysGrowing) })}</span>
+                        {cycle.expectedYieldQuantity && (
+                          <>
+                            <span>•</span>
+                            <span className="text-emerald-700 font-bold">Target: {cycle.expectedYieldQuantity} {cycle.expectedYieldUnit || 'bags'}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="text-sm sm:text-base font-black text-farm-navy">
+                      ${cycleSpend.toFixed(0)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-bold">
+                      {cycleInputs.length} inputs logged
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* 5. TASKS AND HEALTH SECTION */}
+      <section id="dashboard-tasks-health-section" className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
         {/* Section Header with Direct Action Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -315,7 +518,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg sm:text-xl font-black text-farm-navy">
-                  Upcoming Tasks & Health Schedule
+                  Tasks & Health Schedule
                 </h3>
                 {pendingCount > 0 && (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900">
@@ -329,7 +532,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-500 font-medium">
-                Crop sprays, livestock booster vaccines, fertilizing, and field maintenance
+                Crop spray schedules, livestock vaccines, fertilization, and routine farm tasks
               </p>
             </div>
           </div>
@@ -550,192 +753,35 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         )}
       </section>
 
-      {/* 3. FARM METRICS & SPEND OVERVIEW */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Metric 1: Active Crops */}
-        <div
-          onClick={() => onChangeTab('crops')}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm cursor-pointer hover:border-farm-cyan transition-colors"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-bold uppercase">{t('dashboard.active_cycles')}</span>
-            <Sprout className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-farm-navy">
-            {activeCropsCount}
-          </div>
-          <span className="text-xs text-slate-500 font-semibold mt-0.5 block truncate">
-            {farm.size} {farm.sizeUnit} total
-          </span>
-        </div>
-
-        {/* Metric 2: Livestock Head */}
-        <div
-          onClick={() => onChangeTab('animals')}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm cursor-pointer hover:border-farm-cyan transition-colors"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-bold uppercase">{t('dashboard.total_animals')}</span>
-            <PawPrint className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-farm-navy">
-            {totalLivestockHead}
-          </div>
-          <span className="text-xs text-slate-500 font-semibold mt-0.5 block truncate">
-            {animals.length} batches
-          </span>
-        </div>
-
-        {/* Metric 3: Total Inputs Spent */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-bold uppercase">{t('dashboard.total_spent')}</span>
-            <DollarSign className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-farm-navy">
-            ${totalInputsSpent.toFixed(0)}
-          </div>
-          <span className="text-xs text-slate-500 font-semibold mt-0.5 block truncate">
-            {inputRecords.length} records
-          </span>
-        </div>
-
-        {/* Metric 4: Total Harvested with Estimated Revenue */}
-        <div
-          onClick={() => onChangeTab('crops')}
-          className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm cursor-pointer hover:border-farm-cyan transition-colors"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-bold uppercase">{t('dashboard.total_harvest')}</span>
-            <Wheat className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-farm-navy flex items-baseline gap-1">
-            {totalYieldBags}
-            <span className="text-xs font-bold text-slate-500 font-normal">units</span>
-          </div>
-          <div className="mt-1">
-            {totalHarvestValue > 0 ? (
-              <div className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 border border-emerald-200 truncate max-w-full">
-                <span>≈ ${totalHarvestValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} value</span>
-              </div>
-            ) : standingCropEstimatedValue > 0 ? (
-              <div className="text-[11px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md inline-block truncate max-w-full border border-amber-200">
-                Est. Field: ${standingCropEstimatedValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </div>
-            ) : (
-              <span className="text-xs text-slate-500 font-semibold block truncate">
-                {yieldRecords.length} harvest logs
-              </span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. ACTIVE CROP CYCLES OVERVIEW LIST */}
-      <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg sm:text-xl font-bold text-farm-navy flex items-center gap-2">
-            <Wheat className="w-5 h-5 text-emerald-600" />
-            <span>{t('crops.active_crops')}</span>
-          </h3>
-          <button
-            type="button"
-            onClick={() => onChangeTab('crops')}
-            className="text-sm font-bold text-farm-cyan hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <span>{t('common.view_details')}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {cropCycles.length === 0 ? (
-          <div className="p-5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center">
-            <p className="text-base font-semibold text-slate-600 mb-3">
-              {t('crops.no_crops_yet')}
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsAddCycleOpen(true)}
-              className="inline-flex items-center gap-2 min-h-[48px] px-5 py-2.5 rounded-xl bg-farm-navy text-farm-cyan font-bold text-base shadow-sm cursor-pointer"
-            >
-              <PlusCircle className="w-5 h-5" />
-              <span>{t('crops.new_crop_btn')}</span>
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {cropCycles.slice(0, 3).map((cycle) => {
-              const plantDate = new Date(cycle.plantingDate);
-              const daysGrowing = Math.floor((now.getTime() - plantDate.getTime()) / (1000 * 60 * 60 * 24));
-              const cycleInputs = inputRecords.filter((i) => i.cropCycleId === cycle.id);
-              const cycleSpend = cycleInputs.reduce((acc, curr) => acc + (curr.cost || 0), 0);
-
-              return (
-                <div
-                  key={cycle.id}
-                  onClick={() => {
-                    onChangeTab('crops');
-                    if (onSelectCrop) onSelectCrop(cycle.id);
-                  }}
-                  className="p-3.5 sm:p-4 rounded-xl border border-slate-200 hover:border-farm-cyan hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <BlobThumbnail
-                      blob={cycle.photo}
-                      fallbackEmoji="🌾"
-                      fallbackBgClass="bg-emerald-100 text-emerald-800"
-                      alt={cycle.cropType}
-                      className="w-12 h-12 rounded-xl shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-base sm:text-lg font-black text-farm-navy truncate">
-                        {cycle.cropType} {cycle.variety ? `• ${cycle.variety}` : ''}
-                      </div>
-                      <div className="text-xs sm:text-sm text-slate-500 font-semibold truncate">
-                        {cycle.fieldId} • {t('crops.days_old', { days: Math.max(0, daysGrowing) })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="text-sm sm:text-base font-extrabold text-farm-navy">
-                      ${cycleSpend.toFixed(0)}
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-bold">
-                      {cycleInputs.length} inputs
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* 5. FARMCHAT CALLOUT BANNER */}
+      {/* 6. QUICK ACTION BUTTON TO FARMCHAT ADVISOR */}
       <section
-        id="dashboard-farmchat-banner"
+        id="dashboard-farmchat-advisor-cta"
         onClick={() => onChangeTab('farmchat')}
-        className="p-5 rounded-2xl bg-gradient-to-r from-farm-navy via-farm-navy to-slate-900 text-white shadow-lg cursor-pointer hover:shadow-xl transition-all border border-farm-cyan/30 flex items-center justify-between gap-4 group"
+        className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-farm-navy via-farm-navy to-slate-900 text-white shadow-md cursor-pointer hover:shadow-xl hover:border-farm-cyan transition-all border-2 border-farm-cyan/40 flex items-center justify-between gap-4 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-farm-cyan text-farm-navy flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+          <div className="w-13 h-13 rounded-2xl bg-farm-cyan text-farm-navy flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
             <MessageSquareQuote className="w-7 h-7 stroke-[2.5]" />
           </div>
           <div>
-            <div className="text-xs font-black text-farm-cyan uppercase tracking-wider mb-0.5">
-              Instant Advisory
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-xs font-black text-farm-cyan uppercase tracking-wider">
+                Mudhumeni AI Advisor
+              </span>
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                Voice & Text Ready
+              </span>
             </div>
             <h4 className="text-lg sm:text-xl font-black text-white leading-tight">
-              {t('farmchat.title')}
+              Ask FarmChat Advisor
             </h4>
-            <p className="text-sm text-slate-300 font-medium line-clamp-1">
-              {t('dashboard.farm_chat_prompt')}
+            <p className="text-xs sm:text-sm text-slate-300 font-medium line-clamp-1 mt-0.5">
+              Instant voice & chat answers for armyworms, fertilizer calculations, livestock vaccines, and market prices.
             </p>
           </div>
         </div>
 
-        <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-white shrink-0 group-hover:bg-farm-cyan group-hover:text-farm-navy transition-colors">
+        <div className="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white shrink-0 group-hover:bg-farm-cyan group-hover:text-farm-navy group-hover:border-farm-cyan transition-all shadow-sm">
           <ArrowRight className="w-5 h-5 stroke-[2.5]" />
         </div>
       </section>

@@ -21,6 +21,13 @@ import {
   Loader2,
   AlertCircle,
   FileCheck2,
+  PhoneCall,
+  UserPlus,
+  Search,
+  Award,
+  Stethoscope,
+  Sprout,
+  ShieldAlert,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
@@ -33,8 +40,10 @@ import {
   saveAppSettings,
   ImportBackupResult,
 } from '../../db';
-import { Farm, LanguageCode, SizeUnit } from '../../types';
+import { Farm, LanguageCode, SizeUnit, OfficerContact } from '../../types';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import { AgritexDirectoryModal } from '../common/AgritexDirectoryModal';
+import { AddEditOfficerModal } from '../common/AddEditOfficerModal';
 
 interface SettingsModuleProps {
   farm: Farm;
@@ -69,6 +78,27 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreResult, setRestoreResult] = useState<ImportBackupResult | null>(null);
+
+  // Agritex & Vet Contacts Directory Modal state
+  const [showDirectoryModal, setShowDirectoryModal] = useState(false);
+  const [showAddOfficerModal, setShowAddOfficerModal] = useState(false);
+  const [editingOfficer, setEditingOfficer] = useState<OfficerContact | null>(null);
+  const [officerCount, setOfficerCount] = useState<number>(0);
+  const [officerPreviewList, setOfficerPreviewList] = useState<OfficerContact[]>([]);
+
+  const loadOfficerContacts = async () => {
+    try {
+      const all = await db.officerContacts.toArray();
+      setOfficerCount(all.length);
+      setOfficerPreviewList(all.slice(0, 3));
+    } catch (err) {
+      console.warn('Failed to load officer contacts:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadOfficerContacts();
+  }, []);
 
   // Synchronize local form state when farm prop changes (e.g. after restore)
   useEffect(() => {
@@ -449,21 +479,28 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-bold text-farm-navy mb-1">
-              {t('onboarding.farm_size')}
+              {t('onboarding.farm_size')} (Whole Number)
             </label>
             <div className="flex gap-2">
               <input
                 type="number"
-                step="0.1"
-                min="0.1"
-                value={farmSize}
-                onChange={(e) => setFarmSize(Number(e.target.value))}
-                className="flex-1 min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                step="1"
+                min="1"
+                value={farmSize || ''}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setFarmSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
+                }}
+                placeholder="e.g. 5"
+                className="flex-1 min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
               <select
                 value={sizeUnit}
                 onChange={(e) => setSizeUnit(e.target.value as SizeUnit)}
-                className="w-28 min-h-[46px] px-2 py-2 text-sm font-bold rounded-xl border-2 border-slate-300 bg-slate-100 outline-none"
+                className="w-28 min-h-[46px] px-2 py-2 text-sm font-bold rounded-xl border-2 border-slate-300 bg-slate-100 outline-none font-bold"
               >
                 <option value="ha">Hectares</option>
                 <option value="acre">Acres</option>
@@ -555,6 +592,93 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           <span>Save Farm Profile & Location</span>
         </button>
       </form>
+
+      {/* 4. Veterinary & Agronomist / Agritex (Mudhumeni) Contacts Directory */}
+      <section className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-black text-farm-navy flex items-center gap-2">
+              <PhoneCall className="w-5 h-5 text-amber-600" />
+              <span>Veterinary & Agritex (Mudhumeni) Directory</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Search local agronomists, veterinary doctors, and Mudhumeni in your ward & district
+            </p>
+          </div>
+          <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-1 rounded-lg self-start sm:self-auto flex items-center gap-1">
+            <Award className="w-3.5 h-3.5 text-amber-700" />
+            <span>{officerCount} Registered Officers</span>
+          </span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => setShowDirectoryModal(true)}
+            className="min-h-[48px] py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm sm:text-base rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all"
+          >
+            <Search className="w-4.5 h-4.5" />
+            <span>Search Officer Directory</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingOfficer(null);
+              setShowAddOfficerModal(true);
+            }}
+            className="min-h-[48px] py-2.5 px-4 bg-farm-navy hover:bg-farm-navy-light text-white font-bold text-sm sm:text-base rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all"
+          >
+            <UserPlus className="w-4.5 h-4.5 text-farm-cyan" />
+            <span>Add New Vet / Mudhumeni</span>
+          </button>
+        </div>
+
+        {/* Preview List of Contacts */}
+        {officerPreviewList.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Quick Contacts in Directory
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {officerPreviewList.map((off) => (
+                <div
+                  key={off.id}
+                  onClick={() => setShowDirectoryModal(true)}
+                  className="p-3 bg-slate-50 hover:bg-amber-50/50 rounded-xl border border-slate-200 hover:border-amber-300 transition-all cursor-pointer text-left space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900 truncate">
+                      {off.name}
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                      off.role === 'vet_officer' || off.role === 'livestock_specialist' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {off.role === 'vet_officer' ? 'Veterinary' : off.role === 'livestock_specialist' ? 'Livestock' : 'Agritex'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 font-medium truncate flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span>{off.district || off.province || 'Zimbabwe'} {off.wardOrArea ? `(${off.wardOrArea})` : ''}</span>
+                  </div>
+                  <div className="text-xs font-bold text-amber-800 flex items-center gap-1 font-mono">
+                    <PhoneCall className="w-3 h-3 text-amber-600" />
+                    <span>{off.phone}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-950 font-medium flex items-start gap-2">
+          <Sprout className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <span>
+            <strong>FarmChat Advisor Integration:</strong> When you or FarmChat AI identify severe crop diseases or livestock outbreaks, tapping on any <strong>Agritex / Vet badge</strong> in FarmChat Advisor will immediately search this directory with direct call and WhatsApp buttons.
+          </span>
+        </div>
+      </section>
 
       {/* 4. Offline Data & Backup / Restore */}
       <section className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
@@ -731,6 +855,38 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Agritex & Veterinary Directory Modal */}
+      {showDirectoryModal && (
+        <AgritexDirectoryModal
+          isOpen={showDirectoryModal}
+          onClose={() => {
+            setShowDirectoryModal(false);
+            loadOfficerContacts();
+          }}
+          onAddCustomOfficer={() => {
+            setEditingOfficer(null);
+            setShowAddOfficerModal(true);
+          }}
+          onEditCustomOfficer={(officer) => {
+            setEditingOfficer(officer);
+            setShowAddOfficerModal(true);
+          }}
+        />
+      )}
+
+      {/* Add / Edit Officer Modal */}
+      {showAddOfficerModal && (
+        <AddEditOfficerModal
+          isOpen={showAddOfficerModal}
+          officerToEdit={editingOfficer}
+          onClose={() => setShowAddOfficerModal(false)}
+          onSaved={() => {
+            loadOfficerContacts();
+            setConfirmMsg(editingOfficer ? 'Officer contact updated' : 'New Extension / Vet contact registered successfully');
+          }}
+        />
       )}
 
       {/* Confirmation Feedback */}

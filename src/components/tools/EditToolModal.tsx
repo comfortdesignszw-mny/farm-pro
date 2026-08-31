@@ -158,17 +158,23 @@ export const EditToolModal: React.FC<EditToolModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Estimated / Purchase Cost ($)
+                Estimated / Purchase Cost ($ - Whole Number)
               </label>
               <div className="relative">
                 <input
                   type="number"
                   min="0"
-                  step="0.5"
+                  step="1"
                   value={cost || ''}
-                  onChange={(e) => setCost(parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="w-full min-h-[48px] pl-10 pr-4 py-2.5 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                  }}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                    setCost(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
+                  }}
+                  placeholder="0"
+                  className="w-full min-h-[48px] pl-10 pr-4 py-2.5 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
                 />
                 <DollarSign className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" />
               </div>

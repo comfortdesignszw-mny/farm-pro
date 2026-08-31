@@ -1,5 +1,6 @@
 /**
  * Text to Speech (TTS) utilities for Farm Pro & FarmChat Advisor
+ * Optimizes agricultural text for crystal-clear auditory delivery
  */
 
 export function isSpeechSynthesisSupported(): boolean {
@@ -7,21 +8,42 @@ export function isSpeechSynthesisSupported(): boolean {
 }
 
 export function cleanTextForSpeech(text: string): string {
-  return text
-    .replace(/\[\d+\]/g, '') // remove citation brackets
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // remove markdown links
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // remove bold
-    .replace(/\*([^*]+)\*/g, '$1') // remove italics
+  if (!text) return '';
+
+  let cleaned = text
+    // Remove citation brackets e.g. [1], [2]
+    .replace(/\[\d+\]/g, '')
+    // Remove markdown links [text](url) -> text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // Remove markdown bold/italics/code
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
     .replace(/_([^_]+)_/g, '$1')
-    .replace(/`([^`]+)`/g, '$1') // remove code blocks
-    .replace(/^#+\s*(.+)$/gm, '$1.') // replace headings with a sentence
-    .replace(/[•\-\*\+]\s*/g, ', ') // convert bullets to natural pauses
-    .replace(/https?:\/\/\S+/g, '') // remove urls
-    .replace(/[\n\r]+/g, '. ') // replace newlines with pauses
-    .replace(/[*#~`_]/g, '') // strip any stray formatting characters
+    .replace(/`([^`]+)`/g, '$1')
+    // Replace headings with clean pauses
+    .replace(/^#+\s*(.+)$/gm, '$1.')
+    // Convert bullets to conversational pauses
+    .replace(/[•\-\*\+]\s*/g, ', ')
+    // Remove URLs
+    .replace(/https?:\/\/\S+/g, '')
+    // Spoken unit expansions for agricultural clarity
+    .replace(/\b(\d+)\s*ml\b/gi, '$1 milliliters')
+    .replace(/\b(\d+)\s*l\b/gi, '$1 liters')
+    .replace(/\b(\d+)\s*kg\b/gi, '$1 kilograms')
+    .replace(/\b(\d+)\s*g\b/gi, '$1 grams')
+    .replace(/\b(\d+)\s*ha\b/gi, '$1 hectares')
+    .replace(/\$(\d+(\.\d+)?)/g, '$1 dollars')
+    .replace(/\b(\d+)\s*°C\b/gi, '$1 degrees Celsius')
+    // Replace newlines with sentence pauses
+    .replace(/[\n\r]+/g, '. ')
+    // Strip any stray formatting characters
+    .replace(/[*#~`_]/g, '')
+    // Condense extra spaces
     .replace(/\s+/g, ' ')
     .trim();
+
+  return cleaned;
 }
 
 export function speakText(
@@ -35,7 +57,7 @@ export function speakText(
     return () => {};
   }
 
-  // Cancel any existing speech
+  // Cancel any currently playing speech to prevent overlap
   window.speechSynthesis.cancel();
 
   const cleanedText = cleanTextForSpeech(text);
@@ -55,14 +77,18 @@ export function speakText(
     utterance.lang = 'en-US';
   }
 
-  // Try to find natural voice if available
+  // Pick the most natural-sounding voice available in browser
   const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find((v) => v.lang.startsWith(utterance.lang.slice(0, 2)));
+  const matchedVoice =
+    voices.find((v) => v.lang === utterance.lang) ||
+    voices.find((v) => v.lang.startsWith(utterance.lang.slice(0, 2))) ||
+    voices.find((v) => v.default);
+
   if (matchedVoice) {
     utterance.voice = matchedVoice;
   }
 
-  utterance.rate = 0.95; // slightly deliberate for clarity
+  utterance.rate = 0.92; // Slightly measured, clear conversational speed
   utterance.pitch = 1.0;
 
   utterance.onstart = () => {
@@ -74,7 +100,7 @@ export function speakText(
   };
 
   utterance.onerror = (e) => {
-    console.warn('Speech synthesis error:', e);
+    console.warn('Speech synthesis playback notice:', e);
     if (onEnd) onEnd();
   };
 

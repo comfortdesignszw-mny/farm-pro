@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff } from 'lucide-react';
-import { createSpeechRecognizer, isSpeechSupported } from '../../utils/speechRecognition';
+import { Mic, MicOff, Volume2 } from 'lucide-react';
+import { createSpeechRecognizer, isSpeechSupported, normalizeAgroVoiceTranscript } from '../../utils/speechRecognition';
 import { useTranslation } from 'react-i18next';
 
 interface VoiceInputButtonProps {
@@ -56,14 +56,15 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     e.stopPropagation();
 
     if (!supported) {
-      alert('Voice speech recognition is not supported in this browser. You can type directly.');
+      alert('Voice speech recognition is not supported in this browser. You can type your question directly.');
       return;
     }
 
     if (isListening) {
       stopRecognition();
       if (accumulatedTranscriptRef.current && onFinalTranscript) {
-        onFinalTranscript(accumulatedTranscriptRef.current.trim());
+        const cleaned = normalizeAgroVoiceTranscript(accumulatedTranscriptRef.current);
+        onFinalTranscript(cleaned);
       }
     } else {
       accumulatedTranscriptRef.current = '';
@@ -78,13 +79,14 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
             silenceTimeoutRef.current = setTimeout(() => {
               if (onFinalTranscript && text.trim()) {
                 stopRecognition();
-                onFinalTranscript(text.trim());
+                const cleaned = normalizeAgroVoiceTranscript(text);
+                onFinalTranscript(cleaned);
               }
-            }, 1400);
+            }, 1200);
           }
         },
         (error) => {
-          console.warn('Voice error:', error);
+          console.warn('Voice recognition note:', error);
           updateListening(false);
         },
         () => {
@@ -93,7 +95,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       );
 
       if (recognition) {
-        // Map current language
+        // Map current language accurately
         const appLang = lang || i18n.language;
         if (appLang === 'sn') {
           recognition.lang = 'sn-ZW';
@@ -120,7 +122,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       ? 'h-10 w-10 min-h-[40px] min-w-[40px] p-2 rounded-xl text-xs'
       : buttonSize === 'large'
       ? 'min-h-[52px] min-w-[52px] px-4 py-3 rounded-2xl text-base'
-      : 'min-h-[48px] min-w-[48px] px-3 py-2 rounded-xl text-sm';
+      : 'min-h-[48px] min-w-[48px] px-3.5 py-2 rounded-xl text-sm';
 
   return (
     <button
@@ -128,23 +130,30 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       id="voice-input-btn"
       onClick={toggleListening}
       title={isListening ? t('common.listening') : t('common.tap_mic_to_speak')}
-      className={`${sizeClasses} flex items-center justify-center gap-1.5 font-semibold transition-all cursor-pointer select-none ${
+      className={`${sizeClasses} flex items-center justify-center gap-2 font-bold transition-all cursor-pointer select-none ${
         isListening
-          ? 'bg-rose-600 text-white animate-pulse shadow-lg ring-4 ring-rose-200'
+          ? 'bg-rose-600 text-white shadow-lg ring-4 ring-rose-200 animate-pulse'
           : 'bg-slate-100 hover:bg-slate-200 text-farm-navy active:bg-slate-300'
       } ${className}`}
     >
       {isListening ? (
         <>
-          <MicOff className={buttonSize === 'compact' ? 'w-4 h-4 text-white' : 'w-5 h-5 text-white'} />
+          <MicOff className={buttonSize === 'compact' ? 'w-4 h-4 text-white' : 'w-5 h-5 text-white animate-bounce'} />
           {buttonSize !== 'compact' && (
-            <span className="text-sm font-bold tracking-wide">{t('common.listening')}</span>
+            <span className="text-xs sm:text-sm font-black tracking-wide flex items-center gap-1">
+              <span>Listening...</span>
+              <span className="inline-flex gap-0.5">
+                <span className="w-1 h-3 bg-white rounded-full animate-pulse" />
+                <span className="w-1 h-4 bg-white rounded-full animate-pulse delay-75" />
+                <span className="w-1 h-2 bg-white rounded-full animate-pulse delay-150" />
+              </span>
+            </span>
           )}
         </>
       ) : (
         <>
           <Mic className={buttonSize === 'compact' ? 'w-4 h-4 text-farm-navy' : 'w-5 h-5 text-farm-navy'} />
-          {label ? <span className="text-sm font-semibold">{label}</span> : null}
+          {label ? <span className="text-sm font-extrabold">{label}</span> : null}
         </>
       )}
     </button>
