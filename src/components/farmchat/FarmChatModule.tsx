@@ -130,7 +130,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         content: starterContent,
         timestamp: Date.now(),
         synced: true,
-        isOfflineGenerated: true,
+        isOfflineGenerated: false,
         diagnosticData: {
           intent: 'general_question',
           language: (i18n.language as any) || 'en',
@@ -430,12 +430,13 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         },
       };
 
-      // Force internet calls and analysis first with low-connection tolerance (28s timeout + 1 immediate retry)
+      // Force internet connection and online AI image analysis first with low-bandwidth accommodation
       let networkSuccess = false;
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 28000);
+          // 30s timeout per attempt to support remote 2G/3G/4G rural networks
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
 
           const res = await fetch('/api/farmchat', {
             method: 'POST',
@@ -450,20 +451,22 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
             if (data.reply && data.reply.trim().length > 0) {
               replyContent = data.reply;
               diagnosticData = data.data;
-              isAiGenerated = data.isAiGenerated;
+              isAiGenerated = data.isAiGenerated !== false;
               usedLiveConnection = true;
               setIsOnline(true);
               networkSuccess = true;
               break;
             }
+          } else {
+            console.warn(`Online attempt ${attempt} returned HTTP status ${res.status}`);
           }
         } catch (fetchErr) {
-          console.warn(`Online search attempt ${attempt} failed on current connection:`, fetchErr);
-          // If first attempt failed on low connection, proceed to second attempt immediately before offline fallback
+          console.warn(`Online search attempt ${attempt} failed:`, fetchErr);
+          // If first attempt timed out or failed on low connection, retry immediately before offline fallback
         }
       }
 
-      // STAGE 2: If there is ZERO internet connection (all online attempts fail), fallback to offline knowledge base
+      // STAGE 2: If there is ZERO internet connection (all online attempts fail completely), fallback to offline knowledge base
       if (!networkSuccess) {
         console.warn('Zero internet connection detected. Falling back to offline agronomy/veterinary knowledge base.');
         setIsOnline(false);

@@ -136,53 +136,70 @@ Farm Context:
 ${JSON.stringify(farmContext || {})}`;
 
       let contents: any;
+      const isMultimodal = !!imageBase64;
 
       if (imageBase64) {
-        // Strip data prefix if present
-        const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        // Dynamically detect mimeType (image/jpeg, image/png, image/webp)
+        let mimeType = 'image/jpeg';
+        const mimeMatch = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+_-]+);base64,/);
+        if (mimeMatch) {
+          mimeType = mimeMatch[1];
+        }
+
+        // Clean out any data url prefix and whitespace
+        const cleanBase64 = imageBase64
+          .replace(/^data:[^;]+;base64,/, '')
+          .replace(/\s+/g, '')
+          .trim();
 
         const promptText = message && message.trim().length > 0
           ? `Farmer's instructions/notes: "${message}"
 
 Please analyze this farm photo following the Photo Diagnosis Protocol:
 1. Category & Species: Identify whether this is a Plant/Crop or Animal/Livestock, naming the specific species and variety/breed.
-2. Physical Health Assessment: Determine if it shows a healthy plant/animal or exhibits physical symptoms of disease/unhealthiness. Describe all visible physical symptoms.
-3. Internet Search & Common Diseases: Search the internet for common diseases causing these physical symptoms and provide a clear diagnosis.
-4. Quick Actionable Steps & Remedies: Provide immediate steps, low-cost organic options, and chemical sprays or veterinary medications with generic active names and exact dosages.
+2. Physical Health Assessment: Determine if it shows a healthy plant/animal or exhibits physical symptoms of disease/unhealthiness. Describe all visible physical symptoms in detail.
+3. Common Diseases & Diagnosis: Search for and identify common diseases or pests causing these physical symptoms and provide a clear diagnosis with confidence level.
+4. Quick Actionable Steps & Remedies: Provide immediate containment steps, low-cost organic options, and chemical sprays or veterinary medications with generic active names and exact dosages.
 5. Agronomist / Vet Contact: Advise on contacting local AGRITEX Agronomists (for crops) or Veterinary Officers (for livestock).`
           : `Please perform an in-depth agricultural and veterinary physical diagnosis of this photo:
 1. Category & Species: State whether this is a Plant/Crop or Animal/Livestock, and identify the specific species (and variety/breed if visible).
 2. Physical Health Assessment: Check if it is a healthy plant/animal or exhibits physical symptoms of an unhealthy plant/animal. Describe all visible physical signs in detail (leaf spots, wilting, lesions, ruffled feathers, droopiness, discoloration, chew marks, etc.).
-3. Internet Search & Common Diseases: Consult live internet data for common diseases or pests causing these exact physical symptoms, and state the most probable diagnosis.
+3. Common Diseases & Diagnosis: Identify common diseases or pests causing these exact physical symptoms, and state the most probable diagnosis based on agricultural and veterinary data.
 4. Quick Actionable Steps & Remedies:
    - If healthy: Tips to keep it thriving and prevent disease.
    - If unhealthy: Immediate containment, low-cost cultural/organic treatments, and safe chemical sprays or veterinary medicines with GENERIC active ingredients and exact application rates/dosages.
 5. Agronomist / Vet Contact: Provide clear instructions to contact the local AGRITEX Agricultural Extension Officer (for crops) or Veterinary Services Doctor (for livestock).`;
 
-        contents = {
-          parts: [
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: cleanBase64,
-              },
+        contents = [
+          {
+            inlineData: {
+              mimeType,
+              data: cleanBase64,
             },
-            {
-              text: promptText,
-            },
-          ],
-        };
+          },
+          {
+            text: promptText,
+          },
+        ];
       } else {
         contents = message;
       }
 
-      // Multi-tier model execution with automatic quota, search grounding, and network fallback
-      const modelsToTry = [
-        { model: 'gemini-3.7-flash', useSearch: true },
-        { model: 'gemini-3.1-flash-lite', useSearch: true },
-        { model: 'gemini-3.7-flash', useSearch: false },
-        { model: 'gemini-3.1-flash-lite', useSearch: false },
-      ];
+      // Multi-tier model execution prioritizing visual recognition for photos and search grounding for text
+      const modelsToTry = isMultimodal
+        ? [
+            { model: 'gemini-3.7-flash', useSearch: false },
+            { model: 'gemini-flash-latest', useSearch: false },
+            { model: 'gemini-3.1-flash-lite', useSearch: false },
+            { model: 'gemini-3.7-flash', useSearch: true },
+          ]
+        : [
+            { model: 'gemini-3.7-flash', useSearch: true },
+            { model: 'gemini-3.1-flash-lite', useSearch: true },
+            { model: 'gemini-3.7-flash', useSearch: false },
+            { model: 'gemini-flash-latest', useSearch: false },
+            { model: 'gemini-3.1-flash-lite', useSearch: false },
+          ];
 
       let rawResponseText = '';
       let successfulModel = '';
@@ -210,7 +227,7 @@ Please analyze this farm photo following the Photo Diagnosis Protocol:
           }
         } catch (callError: any) {
           console.warn(`Attempt with ${attempt.model} (search=${attempt.useSearch}) encountered:`, callError?.message || callError);
-          // If error is 429 or quota exceeded or network issue, proceed to next fallback tier immediately
+          // If error is tool rejection, quota, or network issue, proceed to next fallback tier immediately
         }
       }
 
