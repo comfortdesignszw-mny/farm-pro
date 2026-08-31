@@ -27,10 +27,10 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
   const [species, setSpecies] = useState<string>('Cattle - Beef');
   const [customSpecies, setCustomSpecies] = useState('');
   const [breed, setBreed] = useState('');
-  const [batchSize, setBatchSize] = useState<number>(1);
+  const [batchSize, setBatchSize] = useState<string>('1');
   const [acquisitionDate, setAcquisitionDate] = useState('');
   const [acquisitionMethod, setAcquisitionMethod] = useState<AcquisitionMethod>('bought');
-  const [cost, setCost] = useState<number>(0);
+  const [cost, setCost] = useState<string>('0');
   const [status, setStatus] = useState<'active' | 'sold' | 'culled'>('active');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
@@ -58,10 +58,10 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
         setCustomSpecies(animal.species);
       }
       setBreed(animal.breed || '');
-      setBatchSize(animal.batchSize || 1);
+      setBatchSize(animal.batchSize !== undefined ? String(animal.batchSize) : '1');
       setAcquisitionDate(animal.acquisitionDate);
       setAcquisitionMethod(animal.acquisitionMethod);
-      setCost(animal.cost || 0);
+      setCost(animal.cost !== undefined ? String(animal.cost) : '0');
       setStatus(animal.status || 'active');
       setPhoto(animal.photo || null);
       setNotes(animal.notes || '');
@@ -79,10 +79,10 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
       ...animal,
       species: finalSpecies as AnimalSpecies,
       breed: breed.trim() || 'Mixed / Indigenous',
-      batchSize: Math.max(1, Math.round(Number(batchSize) || 1)),
+      batchSize: Math.max(1, Math.round(parseFloat(batchSize) || 1)),
       acquisitionDate,
       acquisitionMethod,
-      cost: Math.max(0, Math.round(Number(cost) || 0)),
+      cost: Math.max(0, parseFloat(cost) || 0),
       status,
       photo: photo || undefined,
       notes: notes.trim(),
@@ -185,21 +185,13 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
             </div>
             <div>
               <label className="block text-sm sm:text-base font-bold text-farm-navy mb-1">
-                Batch Size (Whole Number)
+                Batch Size
               </label>
               <input
-                type="number"
-                step="1"
-                min="1"
+                type="text"
                 required
-                value={batchSize || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setBatchSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
-                }}
+                value={batchSize}
+                onChange={(e) => setBatchSize(e.target.value)}
                 placeholder="e.g. 10"
                 className="w-full min-h-[46px] px-3.5 py-2 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
@@ -254,20 +246,12 @@ export const EditAnimalBatchModal: React.FC<EditAnimalBatchModalProps> = ({
             </div>
             <div>
               <label className="block text-sm sm:text-base font-bold text-farm-navy mb-1">
-                Cost ($ USD) (Whole Number)
+                Cost ($ USD)
               </label>
               <input
-                type="number"
-                step="1"
-                min="0"
-                value={cost || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
-                }}
+                type="text"
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
                 placeholder="e.g. 150"
                 className="w-full min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />

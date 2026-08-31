@@ -25,10 +25,10 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
   const [species, setSpecies] = useState<string>(defaultSpecies || 'Cattle - Beef');
   const [customSpecies, setCustomSpecies] = useState('');
   const [breed, setBreed] = useState('');
-  const [batchSize, setBatchSize] = useState<number>(10);
+  const [batchSize, setBatchSize] = useState<string>('10');
   const [acquisitionDate, setAcquisitionDate] = useState(new Date().toISOString().split('T')[0]);
   const [acquisitionMethod, setAcquisitionMethod] = useState<AcquisitionMethod>('bought');
-  const [cost, setCost] = useState<number>(0);
+  const [cost, setCost] = useState<string>('0');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
 
@@ -57,10 +57,10 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
       farmId: farm.id,
       species: finalSpecies as AnimalSpecies,
       breed: breed.trim() || 'Mixed / Indigenous',
-      batchSize: Math.max(1, Math.round(Number(batchSize) || 1)),
+      batchSize: Math.max(1, Math.round(parseFloat(batchSize) || 1)),
       acquisitionDate,
       acquisitionMethod,
-      cost: Math.max(0, Math.round(Number(cost) || 0)),
+      cost: Math.max(0, parseFloat(cost) || 0),
       photo: photo || undefined,
       notes: notes.trim(),
       status: 'active',
@@ -148,21 +148,13 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                3. {t('animals.batch_size')} (Whole Number)
+                3. {t('animals.batch_size')}
               </label>
               <input
-                type="number"
-                step="1"
-                min="1"
+                type="text"
                 required
-                value={batchSize || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setBatchSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
-                }}
+                value={batchSize}
+                onChange={(e) => setBatchSize(e.target.value)}
                 placeholder="e.g. 10"
                 className="w-full min-h-[48px] px-3.5 py-2.5 text-xl font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
@@ -203,20 +195,12 @@ export const AddAnimalBatchModal: React.FC<AddAnimalBatchModalProps> = ({
           {acquisitionMethod === 'bought' && (
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Total Purchase Cost ($) (Whole Number)
+                Total Purchase Cost ($)
               </label>
               <input
-                type="number"
-                step="1"
-                min="0"
-                value={cost || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
-                }}
+                type="text"
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
                 placeholder="e.g. 150"
                 className="w-full min-h-[48px] px-3.5 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />

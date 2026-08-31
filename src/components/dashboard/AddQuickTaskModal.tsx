@@ -420,9 +420,7 @@ export const AddQuickTaskModal: React.FC<AddQuickTaskModalProps> = ({
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  min="0"
-                  step="any"
+                  type="text"
                   value={estimatedCost}
                   onChange={(e) => setEstimatedCost(e.target.value)}
                   placeholder="0.00"

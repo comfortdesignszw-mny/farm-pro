@@ -23,9 +23,9 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
   const { t } = useTranslation();
   const [animalId, setAnimalId] = useState<string>(selectedAnimalId || animals[0]?.id || '');
   const [productType, setProductType] = useState('Eggs (Mazai / Amaqanda)');
-  const [quantity, setQuantity] = useState<number>(30);
+  const [quantity, setQuantity] = useState<string>('30');
   const [unit, setUnit] = useState('crates');
-  const [sellingPricePerUnit, setSellingPricePerUnit] = useState<number | ''>('');
+  const [sellingPricePerUnit, setSellingPricePerUnit] = useState<string>('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [photo, setPhoto] = useState<Blob | null>(null);
 
@@ -44,9 +44,11 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
     setUnit(p.unit);
   };
 
+  const numQuantity = parseFloat(quantity) || 0;
+  const numSellingPrice = parseFloat(sellingPricePerUnit) || 0;
   const totalValue =
-    typeof sellingPricePerUnit === 'number' && sellingPricePerUnit > 0
-      ? Number((sellingPricePerUnit * quantity).toFixed(2))
+    numSellingPrice > 0 && numQuantity > 0
+      ? Number((numSellingPrice * numQuantity).toFixed(2))
       : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,9 +58,9 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
       id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       animalId: animalId || animals[0]?.id || 'default_animal',
       productType,
-      quantity: Number(quantity) || 0,
+      quantity: parseFloat(quantity) || 0,
       unit,
-      sellingPricePerUnit: sellingPricePerUnit !== '' ? Number(sellingPricePerUnit) : undefined,
+      sellingPricePerUnit: sellingPricePerUnit !== '' ? parseFloat(sellingPricePerUnit) || undefined : undefined,
       totalEstimatedValue: totalValue,
       date,
       photo: photo || undefined,
@@ -136,22 +138,14 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
           {/* Quantity + Unit */}
           <div>
             <label className="block text-base font-bold text-farm-navy mb-1.5">
-              2. Quantity Harvested / Collected (Whole Number)
+              2. Quantity Harvested / Collected
             </label>
             <div className="flex gap-2">
               <input
-                type="number"
-                step="1"
-                min="1"
+                type="text"
                 required
-                value={quantity || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setQuantity(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
-                }}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
                 placeholder="e.g. 30"
                 className="flex-1 min-h-[48px] px-4 py-2.5 text-2xl font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
@@ -168,7 +162,7 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
           <div className="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200 space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-bold text-farm-navy">
-                Selling Price ($ per {unit}) (Whole Number) {t('common.optional')}
+                Selling Price ($ per {unit}) {t('common.optional')}
               </label>
               <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
                 Production Value
@@ -177,17 +171,9 @@ export const AddAnimalProductionModal: React.FC<AddAnimalProductionModalProps> =
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-base">$</span>
               <input
-                type="number"
-                step="1"
-                min="0"
+                type="text"
                 value={sellingPricePerUnit}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setSellingPricePerUnit(cleaned === '' ? '' : parseInt(cleaned, 10));
-                }}
+                onChange={(e) => setSellingPricePerUnit(e.target.value)}
                 placeholder="e.g. 6"
                 className="w-full min-h-[44px] pl-8 pr-3 py-2 text-base font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white font-mono"
               />

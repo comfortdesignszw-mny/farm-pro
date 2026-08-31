@@ -61,7 +61,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   // Farm profile editing
   const [farmName, setFarmName] = useState(farm.name);
-  const [farmSize, setFarmSize] = useState(farm.size);
+  const [farmSize, setFarmSize] = useState<string>(String(farm.size));
   const [sizeUnit, setSizeUnit] = useState<SizeUnit>(farm.sizeUnit);
   const [location, setLocation] = useState(farm.location);
   const [coords, setCoords] = useState(farm.coordinates || null);
@@ -103,7 +103,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   // Synchronize local form state when farm prop changes (e.g. after restore)
   useEffect(() => {
     setFarmName(farm.name);
-    setFarmSize(farm.size);
+    setFarmSize(String(farm.size));
     setSizeUnit(farm.sizeUnit);
     setLocation(farm.location);
     setCoords(farm.coordinates || null);
@@ -211,7 +211,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     const updated: Farm = {
       ...farm,
       name: farmName.trim() || farm.name,
-      size: Number(farmSize) || farm.size,
+      size: parseFloat(farmSize) || farm.size,
       sizeUnit,
       location: location.trim() || farm.location,
       coordinates: coords || undefined,
@@ -479,21 +479,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-bold text-farm-navy mb-1">
-              {t('onboarding.farm_size')} (Whole Number)
+              {t('onboarding.farm_size')}
             </label>
             <div className="flex gap-2">
               <input
-                type="number"
-                step="1"
-                min="1"
-                value={farmSize || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setFarmSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
-                }}
+                type="text"
+                value={farmSize}
+                onChange={(e) => setFarmSize(e.target.value)}
                 placeholder="e.g. 5"
                 className="flex-1 min-h-[46px] px-3.5 py-2 text-base font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />

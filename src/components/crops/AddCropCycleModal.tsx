@@ -28,10 +28,10 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
   const [customCropName, setCustomCropName] = useState('');
   const [variety, setVariety] = useState('');
   const [fieldName, setFieldName] = useState('Field 1');
-  const [fieldSize, setFieldSize] = useState<number>(farm.size || 1);
-  const [expectedYieldQuantity, setExpectedYieldQuantity] = useState<number | ''>('');
+  const [fieldSize, setFieldSize] = useState<string>(farm.size ? String(farm.size) : '1');
+  const [expectedYieldQuantity, setExpectedYieldQuantity] = useState<string>('');
   const [expectedYieldUnit, setExpectedYieldUnit] = useState<string>('bags_50kg');
-  const [sellingPricePerUnit, setSellingPricePerUnit] = useState<number | ''>('');
+  const [sellingPricePerUnit, setSellingPricePerUnit] = useState<string>('');
   const [sellingPriceUnit, setSellingPriceUnit] = useState<string>('bags_50kg');
   const [plantingDate, setPlantingDate] = useState(new Date().toISOString().split('T')[0]);
   const [harvestDateExpected, setHarvestDateExpected] = useState(() => {
@@ -210,21 +210,13 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Field Size ({farm.sizeUnit}) (Whole Number)
+                Field Size ({farm.sizeUnit})
               </label>
               <input
-                type="number"
-                step="1"
-                min="1"
+                type="text"
                 required
-                value={fieldSize || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setFieldSize(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
-                }}
+                value={fieldSize}
+                onChange={(e) => setFieldSize(e.target.value)}
                 placeholder="e.g. 2, 5, 10"
                 className="w-full min-h-[48px] px-4 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
@@ -274,23 +266,15 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
               {/* Selling Price */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Selling Price ($ per unit) (Whole Number)
+                  Selling Price ($ per unit)
                 </label>
                 <div className="flex gap-1.5">
                   <div className="relative flex-1">
                     <span className="absolute left-3 top-2.5 text-slate-500 font-bold text-sm">$</span>
                     <input
-                      type="number"
-                      step="1"
-                      min="0"
+                      type="text"
                       value={sellingPricePerUnit}
-                      onKeyDown={(e) => {
-                        if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                      }}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                        setSellingPricePerUnit(cleaned === '' ? '' : parseInt(cleaned, 10));
-                      }}
+                      onChange={(e) => setSellingPricePerUnit(e.target.value)}
                       placeholder="e.g. 25"
                       className="w-full min-h-[42px] pl-7 pr-2.5 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white font-mono"
                     />
@@ -312,21 +296,13 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
               {/* Target Yield */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Expected Total Harvest (Whole Number)
+                  Expected Total Harvest
                 </label>
                 <div className="flex gap-1.5">
                   <input
-                    type="number"
-                    step="1"
-                    min="0"
+                    type="text"
                     value={expectedYieldQuantity}
-                    onKeyDown={(e) => {
-                      if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                    }}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                      setExpectedYieldQuantity(cleaned === '' ? '' : parseInt(cleaned, 10));
-                    }}
+                    onChange={(e) => setExpectedYieldQuantity(e.target.value)}
                     placeholder="e.g. 60"
                     className="w-full min-h-[42px] px-3 py-1.5 text-sm font-black rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none bg-white font-mono"
                   />
@@ -346,16 +322,14 @@ export const AddCropCycleModal: React.FC<AddCropCycleModalProps> = ({
             </div>
 
             {/* Estimated revenue summary */}
-            {typeof sellingPricePerUnit === 'number' &&
-              sellingPricePerUnit > 0 &&
-              typeof expectedYieldQuantity === 'number' &&
-              expectedYieldQuantity > 0 && (
+            {parseFloat(sellingPricePerUnit) > 0 &&
+              parseFloat(expectedYieldQuantity) > 0 && (
                 <div className="p-2.5 rounded-xl bg-white border border-emerald-300 flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-900">
                     Est. Potential Revenue:
                   </span>
                   <span className="text-base font-black text-emerald-800">
-                    ${(sellingPricePerUnit * expectedYieldQuantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${(parseFloat(sellingPricePerUnit) * parseFloat(expectedYieldQuantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               )}

@@ -31,7 +31,7 @@ export const AddAnimalHealthModal: React.FC<AddAnimalHealthModalProps> = ({
     d.setDate(d.getDate() + 90); // default 3 months booster
     return d.toISOString().split('T')[0];
   });
-  const [cost, setCost] = useState<number>(10);
+  const [cost, setCost] = useState<string>('10');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
 
@@ -55,7 +55,7 @@ export const AddAnimalHealthModal: React.FC<AddAnimalHealthModalProps> = ({
       product: product.trim() || healthType,
       date,
       nextDueDate: nextDueDate || undefined,
-      cost: Number(cost) || 0,
+      cost: parseFloat(cost) || 0,
       photo: photo || undefined,
       notes: notes.trim(),
       createdAt: Date.now(),
@@ -183,21 +183,13 @@ export const AddAnimalHealthModal: React.FC<AddAnimalHealthModalProps> = ({
           {/* Cost */}
           <div>
             <label className="block text-base font-bold text-farm-navy mb-1.5">
-              Cost ($ or Local) (Whole Number)
+              Cost ($ or Local)
             </label>
             <div className="relative">
               <input
-                type="number"
-                step="1"
-                min="0"
-                value={cost || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
-                }}
+                type="text"
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
                 placeholder="e.g. 10"
                 className="w-full min-h-[48px] pl-10 pr-3 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />

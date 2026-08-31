@@ -24,7 +24,7 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
   const [category, setCategory] = useState<ToolCategory>('hand_tool');
   const [condition, setCondition] = useState<ToolCondition>('good');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
-  const [cost, setCost] = useState<number>(0);
+  const [cost, setCost] = useState<string>('0');
   const [serialNumber, setSerialNumber] = useState('');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
@@ -41,7 +41,7 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
       category,
       condition,
       purchaseDate,
-      cost: Number(cost) || 0,
+      cost: parseFloat(cost) || 0,
       serialNumber: serialNumber.trim() || undefined,
       photo: photo || undefined,
       notes: notes.trim(),
@@ -158,21 +158,13 @@ export const AddToolModal: React.FC<AddToolModalProps> = ({
             </div>
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Cost ($) (Whole Number)
+                Cost ($)
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={cost || ''}
-                  onKeyDown={(e) => {
-                    if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                  }}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                    setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
-                  }}
+                  type="text"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
                   placeholder="e.g. 45"
                   className="w-full min-h-[48px] pl-10 pr-3 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
                 />

@@ -22,9 +22,9 @@ export const AddAnimalFeedModal: React.FC<AddAnimalFeedModalProps> = ({
   const { t } = useTranslation();
   const [animalId, setAnimalId] = useState<string>(selectedAnimalId || animals[0]?.id || '');
   const [feedType, setFeedType] = useState('Layer Mash / Starter Crumb');
-  const [quantity, setQuantity] = useState<number>(50);
+  const [quantity, setQuantity] = useState<string>('50');
   const [unit, setUnit] = useState('kg');
-  const [cost, setCost] = useState<number>(28);
+  const [cost, setCost] = useState<string>('28');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   if (!isOpen) return null;
@@ -47,9 +47,9 @@ export const AddAnimalFeedModal: React.FC<AddAnimalFeedModalProps> = ({
       id: 'feed_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       animalId: animalId || animals[0]?.id || 'default_animal',
       feedType: feedType.trim() || 'Feed',
-      quantity: Number(quantity) || 0,
+      quantity: parseFloat(quantity) || 0,
       unit,
-      cost: Number(cost) || 0,
+      cost: parseFloat(cost) || 0,
       date,
       createdAt: Date.now(),
     };
@@ -132,22 +132,14 @@ export const AddAnimalFeedModal: React.FC<AddAnimalFeedModalProps> = ({
           {/* Quantity + Unit */}
           <div>
             <label className="block text-base font-bold text-farm-navy mb-1.5">
-              Quantity Feed (Whole Number)
+              Quantity Feed
             </label>
             <div className="flex gap-2">
               <input
-                type="number"
-                step="1"
-                min="1"
+                type="text"
                 required
-                value={quantity || ''}
-                onKeyDown={(e) => {
-                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                }}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                  setQuantity(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
-                }}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
                 placeholder="e.g. 50"
                 className="flex-1 min-h-[48px] px-4 py-2.5 text-xl font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
               />
@@ -168,21 +160,13 @@ export const AddAnimalFeedModal: React.FC<AddAnimalFeedModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Cost ($) (Whole Number)
+                Cost ($)
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={cost || ''}
-                  onKeyDown={(e) => {
-                    if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                  }}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                    setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
-                  }}
+                  type="text"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
                   placeholder="e.g. 28"
                   className="w-full min-h-[48px] pl-10 pr-3 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
                 />

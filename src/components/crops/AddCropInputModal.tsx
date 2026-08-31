@@ -30,9 +30,9 @@ export const AddCropInputModal: React.FC<AddCropInputModalProps> = ({
   const [cycleId, setCycleId] = useState<string>(selectedCycleId || activeCycles[0]?.id || '');
   const [inputType, setInputType] = useState<InputType>('fertilizer');
   const [subtype, setSubtype] = useState('Compound D');
-  const [quantity, setQuantity] = useState<number>(50);
+  const [quantity, setQuantity] = useState<string>('50');
   const [unit, setUnit] = useState('kg');
-  const [cost, setCost] = useState<number>(35);
+  const [cost, setCost] = useState<string>('35');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [notes, setNotes] = useState('');
@@ -41,7 +41,8 @@ export const AddCropInputModal: React.FC<AddCropInputModalProps> = ({
 
   const currentCycle = activeCycles.find((c) => c.id === cycleId) || activeCycles[0];
   const fieldSize = currentCycle?.fieldSize || farm.size || 1;
-  const quantityPerHectare = fieldSize > 0 ? Number((quantity / fieldSize).toFixed(2)) : quantity;
+  const numQuantity = parseFloat(quantity) || 0;
+  const quantityPerHectare = fieldSize > 0 ? Number((numQuantity / fieldSize).toFixed(2)) : numQuantity;
 
   const handleTypeSelect = (type: InputType) => {
     setInputType(type);
@@ -72,10 +73,10 @@ export const AddCropInputModal: React.FC<AddCropInputModalProps> = ({
       cropCycleId: cycleId || activeCycles[0]?.id || 'default_cycle',
       type: inputType,
       subtype: subtype.trim() || inputType,
-      quantity: Number(quantity) || 0,
+      quantity: parseFloat(quantity) || 0,
       unit,
       quantityPerHectare,
-      cost: Number(cost) || 0,
+      cost: parseFloat(cost) || 0,
       date,
       photo: photo || undefined,
       notes: notes.trim(),
@@ -224,22 +225,14 @@ export const AddCropInputModal: React.FC<AddCropInputModalProps> = ({
             {/* Quantity + Unit */}
             <div>
               <label className="block text-base font-bold text-farm-navy mb-1.5">
-                Quantity Used (Whole Number)
+                Quantity Used
               </label>
               <div className="flex gap-2">
                 <input
-                  type="number"
-                  step="1"
-                  min="1"
+                  type="text"
                   required
-                  value={quantity || ''}
-                  onKeyDown={(e) => {
-                    if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                  }}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                    setQuantity(cleaned === '' ? ('' as any) : parseInt(cleaned, 10));
-                  }}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
                   placeholder="e.g. 50"
                   className="flex-1 min-h-[48px] px-4 py-2.5 text-xl font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
                 />
@@ -280,21 +273,13 @@ export const AddCropInputModal: React.FC<AddCropInputModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-base font-bold text-farm-navy mb-1.5">
-                  {t('common.cost')} ($ or Local) (Whole Number)
+                  {t('common.cost')} ($ or Local)
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={cost || ''}
-                    onKeyDown={(e) => {
-                      if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') e.preventDefault();
-                    }}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                      setCost(cleaned === '' ? 0 : parseInt(cleaned, 10));
-                    }}
+                    type="text"
+                    value={cost}
+                    onChange={(e) => setCost(e.target.value)}
                     placeholder="e.g. 35"
                     className="w-full min-h-[48px] pl-10 pr-3 py-2.5 text-lg font-bold rounded-xl border-2 border-slate-300 focus:border-farm-cyan outline-none font-mono"
                   />
