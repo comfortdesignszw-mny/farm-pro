@@ -185,20 +185,35 @@ Please analyze this farm photo following the Photo Diagnosis Protocol:
         contents = message;
       }
 
-      // Multi-tier model execution prioritizing visual recognition for photos and search grounding for text
+      // Resilient Multi-tier Gemini AI model fallback chain (including all free and production models)
+      // Multimodal vision prioritization for photos, search-grounded prioritization for text & voice
       const modelsToTry = isMultimodal
         ? [
-            { model: 'gemini-3.7-flash', useSearch: false },
-            { model: 'gemini-flash-latest', useSearch: false },
-            { model: 'gemini-3.1-flash-lite', useSearch: false },
-            { model: 'gemini-3.7-flash', useSearch: true },
+            { model: 'gemini-3.7-flash', useSearch: false, label: 'Gemini 3.7 Flash Vision' },
+            { model: 'gemini-flash-latest', useSearch: false, label: 'Gemini Flash Latest Vision' },
+            { model: 'gemini-3.1-flash-lite', useSearch: false, label: 'Gemini 3.1 Flash-Lite Vision' },
+            { model: 'gemini-flash-lite-latest', useSearch: false, label: 'Gemini Flash-Lite Latest Vision' },
+            { model: 'gemini-2.5-flash', useSearch: false, label: 'Gemini 2.5 Flash Vision' },
+            { model: 'gemini-2.5-flash-lite', useSearch: false, label: 'Gemini 2.5 Flash-Lite Vision' },
+            { model: 'gemini-2.0-flash', useSearch: false, label: 'Gemini 2.0 Flash Vision' },
+            { model: 'gemini-2.0-flash-lite', useSearch: false, label: 'Gemini 2.0 Flash-Lite Vision' },
+            { model: 'gemini-3.7-flash', useSearch: true, label: 'Gemini 3.7 Flash + Search Grounding' },
+            { model: 'gemini-2.5-flash', useSearch: true, label: 'Gemini 2.5 Flash + Search Grounding' },
           ]
         : [
-            { model: 'gemini-3.7-flash', useSearch: true },
-            { model: 'gemini-3.1-flash-lite', useSearch: true },
-            { model: 'gemini-3.7-flash', useSearch: false },
-            { model: 'gemini-flash-latest', useSearch: false },
-            { model: 'gemini-3.1-flash-lite', useSearch: false },
+            { model: 'gemini-3.7-flash', useSearch: true, label: 'Gemini 3.7 Flash + Search Grounding' },
+            { model: 'gemini-3.1-flash-lite', useSearch: true, label: 'Gemini 3.1 Flash-Lite + Search Grounding' },
+            { model: 'gemini-flash-latest', useSearch: true, label: 'Gemini Flash Latest + Search Grounding' },
+            { model: 'gemini-2.5-flash', useSearch: true, label: 'Gemini 2.5 Flash + Search Grounding' },
+            { model: 'gemini-2.0-flash', useSearch: true, label: 'Gemini 2.0 Flash + Search Grounding' },
+            { model: 'gemini-3.7-flash', useSearch: false, label: 'Gemini 3.7 Flash Direct' },
+            { model: 'gemini-flash-latest', useSearch: false, label: 'Gemini Flash Latest Direct' },
+            { model: 'gemini-3.1-flash-lite', useSearch: false, label: 'Gemini 3.1 Flash-Lite Direct' },
+            { model: 'gemini-flash-lite-latest', useSearch: false, label: 'Gemini Flash-Lite Latest Direct' },
+            { model: 'gemini-2.5-flash', useSearch: false, label: 'Gemini 2.5 Flash Direct' },
+            { model: 'gemini-2.5-flash-lite', useSearch: false, label: 'Gemini 2.5 Flash-Lite Direct' },
+            { model: 'gemini-2.0-flash', useSearch: false, label: 'Gemini 2.0 Flash Direct' },
+            { model: 'gemini-2.0-flash-lite', useSearch: false, label: 'Gemini 2.0 Flash-Lite Direct' },
           ];
 
       let rawResponseText = '';
@@ -214,20 +229,28 @@ Please analyze this farm photo following the Photo Diagnosis Protocol:
             config.tools = [{ googleSearch: {} }];
           }
 
-          const response = await ai.models.generateContent({
+          // Timeout per tier to quickly transition if an individual endpoint is slow or throttled
+          const callPromise = ai.models.generateContent({
             model: attempt.model,
             contents,
             config,
           });
 
-          if (response.text && response.text.trim().length > 0) {
+          const tierTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Model ${attempt.model} call timed out`)), 12000)
+          );
+
+          const response: any = await Promise.race([callPromise, tierTimeout]);
+
+          if (response?.text && response.text.trim().length > 0) {
             rawResponseText = response.text.trim();
-            successfulModel = attempt.model;
+            successfulModel = attempt.label || attempt.model;
+            console.log(`FarmChat AI query successfully answered by [${successfulModel}]`);
             break;
           }
         } catch (callError: any) {
-          console.warn(`Attempt with ${attempt.model} (search=${attempt.useSearch}) encountered:`, callError?.message || callError);
-          // If error is tool rejection, quota, or network issue, proceed to next fallback tier immediately
+          console.warn(`Fallback tier failed: ${attempt.label || attempt.model} (search=${attempt.useSearch}) ->`, callError?.message || callError);
+          // Seamlessly proceed to the next fallback tier in the chain
         }
       }
 
@@ -299,6 +322,7 @@ Please analyze this farm photo following the Photo Diagnosis Protocol:
 
       res.json({
         reply: cleanReply,
+        model: successfulModel,
         data: {
           intent,
           language,
