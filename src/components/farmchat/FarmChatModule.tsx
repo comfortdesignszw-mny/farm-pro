@@ -32,7 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { db, getAppSettings } from '../../db';
 import { ChatMessage, Farm, DiagnosticData, AdvisorIntent, OfficerContact } from '../../types';
 import { VoiceInputButton } from '../common/VoiceInputButton';
-import { blobToBase64 } from '../../utils/imageCompressor';
+import { blobToBase64, compressImage } from '../../utils/imageCompressor';
 import { speakText, stopSpeech } from '../../utils/speechSynthesis';
 import { HumanFormattedMessage } from './HumanFormattedMessage';
 import { AgritexDirectoryModal } from '../common/AgritexDirectoryModal';
@@ -342,6 +342,17 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
     };
   };
 
+  const handlePhotoSelected = async (file: File | Blob) => {
+    try {
+      // Compress to optimal dimensions and lightweight JPEG quality for fast upload on low connection
+      const compressed = await compressImage(file, 900, 0.75);
+      setAttachedPhoto(compressed);
+    } catch (err) {
+      console.warn('Image compression fallback to raw file', err);
+      setAttachedPhoto(file);
+    }
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputQuery).trim();
     if (!text && !attachedPhoto) return;
@@ -352,7 +363,11 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
     const userMessage: ChatMessage = {
       id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       role: 'user',
-      content: text || (attachedPhoto ? 'Please inspect this photo, examine physical symptoms, and diagnose.' : ''),
+      content:
+        text ||
+        (attachedPhoto
+          ? 'Please analyze this photo: identify if plant or animal, examine physical symptoms, search for common diseases if unhealthy, and suggest remedies and professional contacts.'
+          : ''),
       mediaAttachment: attachedPhoto || undefined,
       timestamp: Date.now(),
       synced: initialOnlineEstimate,
@@ -371,7 +386,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       let isAiGenerated = false;
       let usedLiveConnection = false;
 
-      // STAGE 1: Attempt live internet search & multimodal analysis via Gemini Google Search grounding first
+      // STAGE 1: Force live internet search & multimodal analysis via Gemini Google Search grounding first
       let imageBase64: string | undefined = undefined;
       if (photoToProcess) {
         try {
@@ -381,68 +396,76 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         }
       }
 
-      try {
-        // Retrieve live active crops and livestock batches to ground the AI diagnosis with precision
-        const activeCrops = await db.cropCycles.filter((c) => c.status === 'active').toArray();
-        const activeAnimals = await db.animals.filter((a) => a.status === 'active').toArray();
+      // Retrieve live active crops and livestock batches to ground the AI diagnosis with precision
+      const activeCrops = await db.cropCycles.filter((c) => c.status === 'active').toArray();
+      const activeAnimals = await db.animals.filter((a) => a.status === 'active').toArray();
 
-        const cropsSummary =
-          activeCrops.length > 0
-            ? activeCrops
-                .map(
-                  (c) =>
-                    `${c.cropType} (${c.variety || 'Standard variety'}, planted: ${c.plantingDate}${c.fieldSize ? `, size: ${c.fieldSize}ha` : ''})`
-                )
-                .join(', ')
-            : farm.cropsSpecialized.join(', ');
+      const cropsSummary =
+        activeCrops.length > 0
+          ? activeCrops
+              .map(
+                (c) =>
+                  `${c.cropType} (${c.variety || 'Standard variety'}, planted: ${c.plantingDate}${c.fieldSize ? `, size: ${c.fieldSize}ha` : ''})`
+              )
+              .join(', ')
+          : farm.cropsSpecialized.join(', ');
 
-        const animalsSummary =
-          activeAnimals.length > 0
-            ? activeAnimals
-                .map((a) => `${a.species} (${a.breed || 'Standard'}, batch size: ${a.batchSize || 1}${a.tagOrName ? `, tag: ${a.tagOrName}` : ''})`)
-                .join(', ')
-            : undefined;
+      const animalsSummary =
+        activeAnimals.length > 0
+          ? activeAnimals
+              .map((a) => `${a.species} (${a.breed || 'Standard'}, batch size: ${a.batchSize || 1}${a.tagOrName ? `, tag: ${a.tagOrName}` : ''})`)
+              .join(', ')
+          : undefined;
 
-        // Robust timeout allowing low/2G/3G/4G bandwidths to complete online search
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 28000);
+      const requestPayload = {
+        message: text,
+        imageBase64,
+        language: i18n.language,
+        farmContext: {
+          name: farm.name,
+          size: `${farm.size} ${farm.sizeUnit}`,
+          location: farm.location,
+          crops: cropsSummary,
+          livestock: animalsSummary,
+        },
+      };
 
-        const res = await fetch('/api/farmchat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            message: text,
-            imageBase64,
-            language: i18n.language,
-            farmContext: {
-              name: farm.name,
-              size: `${farm.size} ${farm.sizeUnit}`,
-              location: farm.location,
-              crops: cropsSummary,
-              livestock: animalsSummary,
-            },
-          }),
-        });
-        clearTimeout(timeoutId);
+      // Force internet calls and analysis first with low-connection tolerance (28s timeout + 1 immediate retry)
+      let networkSuccess = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 28000);
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.reply && data.reply.trim().length > 0) {
-            replyContent = data.reply;
-            diagnosticData = data.data;
-            isAiGenerated = data.isAiGenerated;
-            usedLiveConnection = true;
-            setIsOnline(true);
-          } else {
-            throw new Error('Empty response from AI search');
+          const res = await fetch('/api/farmchat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify(requestPayload),
+          });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.reply && data.reply.trim().length > 0) {
+              replyContent = data.reply;
+              diagnosticData = data.data;
+              isAiGenerated = data.isAiGenerated;
+              usedLiveConnection = true;
+              setIsOnline(true);
+              networkSuccess = true;
+              break;
+            }
           }
-        } else {
-          throw new Error(`Server returned status ${res.status}`);
+        } catch (fetchErr) {
+          console.warn(`Online search attempt ${attempt} failed on current connection:`, fetchErr);
+          // If first attempt failed on low connection, proceed to second attempt immediately before offline fallback
         }
-      } catch (networkOrAiError) {
-        console.warn('Live internet search failed or offline. Falling back to offline knowledge base:', networkOrAiError);
-        // STAGE 2: Fallback immediately to offline knowledge base upon zero connection or timeout
+      }
+
+      // STAGE 2: If there is ZERO internet connection (all online attempts fail), fallback to offline knowledge base
+      if (!networkSuccess) {
+        console.warn('Zero internet connection detected. Falling back to offline agronomy/veterinary knowledge base.');
         setIsOnline(false);
         const offlineRes = await searchOfflineKnowledgeBase(text, !!photoToProcess);
         replyContent = offlineRes.text;
@@ -989,7 +1012,8 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) setAttachedPhoto(f);
+                if (f) handlePhotoSelected(f);
+                e.target.value = '';
               }}
             />
             <button
@@ -1010,7 +1034,8 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) setAttachedPhoto(f);
+                if (f) handlePhotoSelected(f);
+                e.target.value = '';
               }}
             />
             <button
