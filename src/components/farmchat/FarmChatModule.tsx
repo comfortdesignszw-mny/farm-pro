@@ -158,7 +158,8 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
   };
 
   const searchOfflineKnowledgeBase = async (
-    query: string
+    query: string,
+    hasPhoto: boolean = false
   ): Promise<{ text: string; data?: DiagnosticData }> => {
     const cleanTokens = query
       .toLowerCase()
@@ -236,6 +237,60 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       return { text: fullReply, data };
     }
 
+    // Photo-specific offline inspection guide if a photo was attached during zero network
+    if (hasPhoto) {
+      if (i18n.language === 'sn') {
+        const photoMsg = `Ongororo yeMufananidzo (Offline Mode):\n\nMufananidzo wenyu wachengetwa. Pamusana pekuti muchina uri offline pasina internet, hezvino zviratidzo zvinowanzoonekwa:\n\n• Zvirimwa: Tarisai mashizha kana aine makwapa matsvuku/brown (Blight), makomba akadyiwa (Fall Armyworm/Mhashu), kana kuti kusanduka ruvara kuva yero. Bvisai mashizha anorwara, shandisai dota remugodhi kana mushonga weMancozeb / Copper Oxychloride.\n• Zvipfuyo/Huku: Tarisai minhenga yakamira, kukotsira, kana manyoka ane ropa (Coccidiosis) kana kuchena/girini (Newcastle). Paridzirai vanorwara pakarepo, vapei mvura ine mavhitamini uye taurai nachiremba wezvipfuyo (Vet) kana mudhumeni weAGRITEX.`;
+        return {
+          text: photoMsg,
+          data: {
+            intent: 'disease_pest_diagnosis',
+            language: 'sn',
+            reply_text: photoMsg,
+            recommendations: [
+              'Paridzai zvirimwa kana mhuka dzinoratidza kurwara',
+              'Tarisai zviri mukati meMagwaro eFarm Pro (Offline Guides)',
+              'Batai mudhumeni weAGRITEX kana chiremba wezvipfuyo wepedyo',
+            ],
+            escalate_to_professional: true,
+          },
+        };
+      }
+      if (i18n.language === 'nd') {
+        const photoMsg = `Ukuhlolwa kweSitombe (Offline Mode):\n\nIsitombe sakho sigciniwe. Ngenxa yokuthi akukho internet khathesi, nanku okuqakathekileyo ongakuhlola:\n\n• Izitshalo: Khangela amagqabi nxa elemabala ansundu (Blight), imbobo ezidliweyo (Armyworm), kumbe ukutshintsha kombala kube phuzi. Susa amagqabi agulayo, usebenzise umlotha kumbe umuthi weMancozeb.\n• Izifuyo/Izinkukhu: Khangela izimpaphe ezimileyo, ukunqekuzisa ikhanda kumbe uhudo olubomvu (Coccidiosis). Hlukanisa izifuyo ezigulayo masinyane, uziphe amanzi lamavithamini, ubusubiza umeluleki we-AGRITEX kumbe udokotela wezifuyo.`;
+        return {
+          text: photoMsg,
+          data: {
+            intent: 'disease_pest_diagnosis',
+            language: 'nd',
+            reply_text: photoMsg,
+            recommendations: [
+              'Hlukanisa izitshalo kumbe izifuyo ezigulayo ngokuphazima kweso',
+              'Sebenzisa iziqondiso ezibhaliweyo ku-Farm Pro',
+              'Biza umeluleki wezolimo we-AGRITEX eduzane lawe',
+            ],
+            escalate_to_professional: true,
+          },
+        };
+      }
+
+      const photoMsg = `Visual Photo Analysis (Offline Mode):\n\nYour photo has been captured. While offline without live internet search, here is a visual symptom checklist:\n\n• Crop Physical Inspection: Look for brown concentric rings or water-soaked lesions (Early/Late Blight), windowed leaf holes (Fall Armyworm or Stalk Borer), or yellowing veins (Viral/Nutrient deficiency). Immediately prune infected foliage and prepare low-cost organic ash/neem solution or Mancozeb/Copper spray.\n• Livestock Physical Inspection: Check for ruffled feathers, respiratory wheezing, droopiness, or bloody/green diarrhea (Coccidiosis / Newcastle). Immediately quarantine affected animals, provide electrolyte water, and notify your local Veterinary / AGRITEX Extension Officer.`;
+      return {
+        text: photoMsg,
+        data: {
+          intent: 'disease_pest_diagnosis',
+          language: 'en',
+          reply_text: photoMsg,
+          recommendations: [
+            'Isolate visibly infected crops or sick animals immediately',
+            'Consult the built-in Crop & Livestock guides inside Farm Pro',
+            'Contact local AGRITEX Agricultural Extension Officer or Veterinary Services',
+          ],
+          escalate_to_professional: true,
+        },
+      };
+    }
+
     // Default offline fallback
     if (i18n.language === 'sn') {
       const msg = `Zano rePurazi:\n\nNdatenda nemubvunzo wenyu. Tarisai zvikamu zvezvirimwa nezvipfuyo zviri mukati meFarm Pro kuti muwane magwaro akazara ekurima. Kana maverenga pamusoro pezvirwere zvakakomba, tapota tsvagai mudhumeni wekurima weAGRITEX kana chiremba wemhuka ari pedyo.`;
@@ -297,7 +352,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
     const userMessage: ChatMessage = {
       id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       role: 'user',
-      content: text || (attachedPhoto ? 'Please inspect this farm photo and diagnose.' : ''),
+      content: text || (attachedPhoto ? 'Please inspect this photo, examine physical symptoms, and diagnose.' : ''),
       mediaAttachment: attachedPhoto || undefined,
       timestamp: Date.now(),
       synced: initialOnlineEstimate,
@@ -316,7 +371,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
       let isAiGenerated = false;
       let usedLiveConnection = false;
 
-      // STAGE 1: Attempt live internet search via Gemini Google Search grounding first (even on low connection)
+      // STAGE 1: Attempt live internet search & multimodal analysis via Gemini Google Search grounding first
       let imageBase64: string | undefined = undefined;
       if (photoToProcess) {
         try {
@@ -348,9 +403,9 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
                 .join(', ')
             : undefined;
 
-        // Robust 25-second timeout allowing low/2G/3G connections to complete
+        // Robust timeout allowing low/2G/3G/4G bandwidths to complete online search
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        const timeoutId = setTimeout(() => controller.abort(), 28000);
 
         const res = await fetch('/api/farmchat', {
           method: 'POST',
@@ -387,9 +442,9 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
         }
       } catch (networkOrAiError) {
         console.warn('Live internet search failed or offline. Falling back to offline knowledge base:', networkOrAiError);
-        // STAGE 2: Fallback immediately to offline knowledge base upon network failure or no connection
+        // STAGE 2: Fallback immediately to offline knowledge base upon zero connection or timeout
         setIsOnline(false);
-        const offlineRes = await searchOfflineKnowledgeBase(text);
+        const offlineRes = await searchOfflineKnowledgeBase(text, !!photoToProcess);
         replyContent = offlineRes.text;
         diagnosticData = offlineRes.data;
         isAiGenerated = false;
@@ -417,7 +472,7 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
     } catch (err) {
       console.error('Critical Chat error, executing emergency offline fallback:', err);
       setIsOnline(false);
-      const fallback = await searchOfflineKnowledgeBase(text);
+      const fallback = await searchOfflineKnowledgeBase(text, !!photoToProcess);
       const botMessageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
       const botMessage: ChatMessage = {
         id: botMessageId,
@@ -879,11 +934,11 @@ export const FarmChatModule: React.FC<FarmChatModuleProps> = ({ farm }) => {
               </div>
               <div>
                 <span className="text-sm font-black text-farm-navy block">
-                  FarmChart is gathering info for your request......
+                  FarmChat is analyzing your request...
                 </span>
                 <span className="text-xs text-slate-500 font-medium">
                   {isOnline
-                    ? 'Retrieving latest agricultural data and expert farming advice'
+                    ? 'Searching internet & analyzing physical symptoms for accurate recommendations'
                     : 'Searching built-in offline crop & livestock knowledge base'}
                 </span>
               </div>
