@@ -17,12 +17,26 @@ export const MoreModule: React.FC<MoreModuleProps> = ({
   onResetComplete,
 }) => {
   const { t } = useTranslation();
-  const [subTab, setSubTab] = useState<'tools' | 'settings' | 'weather'>('tools');
+  const [subTab, setSubTab] = useState<'settings' | 'tools' | 'weather'>('settings');
 
   return (
     <div className="pb-24 max-w-4xl mx-auto px-4 py-4 space-y-5 animate-in fade-in duration-150">
       {/* Sub Navigation Strip (Icon + Word) */}
       <div className="flex bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs gap-1">
+        <button
+          type="button"
+          id="subtab-settings-btn"
+          onClick={() => setSubTab('settings')}
+          className={`flex-1 min-h-[48px] py-2 px-3 rounded-xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            subTab === 'settings'
+              ? 'bg-farm-navy text-farm-cyan shadow-xs'
+              : 'text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span>{t('common.settings')}</span>
+        </button>
+
         <button
           type="button"
           id="subtab-tools-btn"
@@ -50,23 +64,17 @@ export const MoreModule: React.FC<MoreModuleProps> = ({
           <CloudSun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
           <span>{t('common.weather')}</span>
         </button>
-
-        <button
-          type="button"
-          id="subtab-settings-btn"
-          onClick={() => setSubTab('settings')}
-          className={`flex-1 min-h-[48px] py-2 px-3 rounded-xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            subTab === 'settings'
-              ? 'bg-farm-navy text-farm-cyan shadow-xs'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span>{t('common.settings')}</span>
-        </button>
       </div>
 
       {/* Content */}
+      {subTab === 'settings' && (
+        <SettingsModule
+          farm={farm}
+          onFarmUpdated={onFarmUpdated}
+          onResetComplete={onResetComplete}
+        />
+      )}
+
       {subTab === 'tools' && <ToolsModule farm={farm} />}
 
       {subTab === 'weather' && (
@@ -114,14 +122,6 @@ export const MoreModule: React.FC<MoreModuleProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {subTab === 'settings' && (
-        <SettingsModule
-          farm={farm}
-          onFarmUpdated={onFarmUpdated}
-          onResetComplete={onResetComplete}
-        />
       )}
     </div>
   );
