@@ -185,41 +185,27 @@ Please analyze this farm photo following the Photo Diagnosis Protocol:
         contents = message;
       }
 
-      // Resilient Multi-tier Gemini AI model fallback chain (including all free and production models)
-      // Multimodal vision prioritization for photos, search-grounded prioritization for text & voice
+      // Resilient Multi-tier Gemini AI model fallback chain with valid Gemini SDK models
+      // gemini-3.7-flash (primary) and gemini-3.1-flash-lite (high throughput fallback)
       const modelsToTry = isMultimodal
         ? [
             { model: 'gemini-3.7-flash', useSearch: false, label: 'Gemini 3.7 Flash Vision' },
-            { model: 'gemini-flash-latest', useSearch: false, label: 'Gemini Flash Latest Vision' },
             { model: 'gemini-3.1-flash-lite', useSearch: false, label: 'Gemini 3.1 Flash-Lite Vision' },
-            { model: 'gemini-flash-lite-latest', useSearch: false, label: 'Gemini Flash-Lite Latest Vision' },
-            { model: 'gemini-2.5-flash', useSearch: false, label: 'Gemini 2.5 Flash Vision' },
-            { model: 'gemini-2.5-flash-lite', useSearch: false, label: 'Gemini 2.5 Flash-Lite Vision' },
-            { model: 'gemini-2.0-flash', useSearch: false, label: 'Gemini 2.0 Flash Vision' },
-            { model: 'gemini-2.0-flash-lite', useSearch: false, label: 'Gemini 2.0 Flash-Lite Vision' },
-            { model: 'gemini-3.7-flash', useSearch: true, label: 'Gemini 3.7 Flash + Search Grounding' },
-            { model: 'gemini-2.5-flash', useSearch: true, label: 'Gemini 2.5 Flash + Search Grounding' },
+            { model: 'gemini-flash-latest', useSearch: false, label: 'Gemini Flash Latest Vision' },
           ]
         : [
             { model: 'gemini-3.7-flash', useSearch: true, label: 'Gemini 3.7 Flash + Search Grounding' },
             { model: 'gemini-3.1-flash-lite', useSearch: true, label: 'Gemini 3.1 Flash-Lite + Search Grounding' },
-            { model: 'gemini-flash-latest', useSearch: true, label: 'Gemini Flash Latest + Search Grounding' },
-            { model: 'gemini-2.5-flash', useSearch: true, label: 'Gemini 2.5 Flash + Search Grounding' },
-            { model: 'gemini-2.0-flash', useSearch: true, label: 'Gemini 2.0 Flash + Search Grounding' },
             { model: 'gemini-3.7-flash', useSearch: false, label: 'Gemini 3.7 Flash Direct' },
-            { model: 'gemini-flash-latest', useSearch: false, label: 'Gemini Flash Latest Direct' },
             { model: 'gemini-3.1-flash-lite', useSearch: false, label: 'Gemini 3.1 Flash-Lite Direct' },
-            { model: 'gemini-flash-lite-latest', useSearch: false, label: 'Gemini Flash-Lite Latest Direct' },
-            { model: 'gemini-2.5-flash', useSearch: false, label: 'Gemini 2.5 Flash Direct' },
-            { model: 'gemini-2.5-flash-lite', useSearch: false, label: 'Gemini 2.5 Flash-Lite Direct' },
-            { model: 'gemini-2.0-flash', useSearch: false, label: 'Gemini 2.0 Flash Direct' },
-            { model: 'gemini-2.0-flash-lite', useSearch: false, label: 'Gemini 2.0 Flash-Lite Direct' },
+            { model: 'gemini-flash-latest', useSearch: false, label: 'Gemini Flash Latest Direct' },
           ];
 
       let rawResponseText = '';
       let successfulModel = '';
 
-      for (const attempt of modelsToTry) {
+      for (let i = 0; i < modelsToTry.length; i++) {
+        const attempt = modelsToTry[i];
         try {
           const config: any = {
             systemInstruction,
@@ -237,7 +223,7 @@ Please analyze this farm photo following the Photo Diagnosis Protocol:
           });
 
           const tierTimeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Model ${attempt.model} call timed out`)), 12000)
+            setTimeout(() => reject(new Error(`Model ${attempt.model} call timed out`)), 14000)
           );
 
           const response: any = await Promise.race([callPromise, tierTimeout]);
@@ -249,8 +235,14 @@ Please analyze this farm photo following the Photo Diagnosis Protocol:
             break;
           }
         } catch (callError: any) {
-          console.warn(`Fallback tier failed: ${attempt.label || attempt.model} (search=${attempt.useSearch}) ->`, callError?.message || callError);
-          // Seamlessly proceed to the next fallback tier in the chain
+          const errMsg = callError?.message || String(callError);
+          const isDemandSpike = errMsg.includes('503') || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE') || errMsg.includes('429');
+          console.warn(`Fallback tier note: ${attempt.label || attempt.model} (search=${attempt.useSearch}) -> ${isDemandSpike ? 'Temporary demand spike, switching tier...' : errMsg}`);
+
+          // If there are more tiers left, apply a short 400ms pause before trying the next tier
+          if (i < modelsToTry.length - 1) {
+            await new Promise((r) => setTimeout(r, 400));
+          }
         }
       }
 

@@ -68,7 +68,7 @@
     "size_unit": "Unit",
     "location": "Location / District",
     "location_placeholder": "e.g. Mazowe, Mashonaland Central",
-    "crops_specialized": "Main Crops You Grow",
+    "crops_specialized": "Crops or Animals you grow",
     "start_farming": "Open My Farm"
   },
   "dashboard": {

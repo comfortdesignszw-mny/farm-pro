@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sprout, Check, ArrowRight, MapPin, Globe, Sparkles, Upload, Loader2 } from 'lucide-react';
+import { Sprout, Check, ArrowRight, MapPin, Globe, Sparkles, Upload, Loader2, Wheat, PawPrint, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
 import { db, importDatabaseBackup } from '../../db';
@@ -22,7 +22,14 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
   const [farmSize, setFarmSize] = useState<string>('2.5');
   const [sizeUnit, setSizeUnit] = useState<SizeUnit>('ha');
   const [location, setLocation] = useState('Zimbabwe');
-  const [cropsSpecialized, setCropsSpecialized] = useState<string[]>(['Maize', 'Groundnuts']);
+  const [cropsSpecialized, setCropsSpecialized] = useState<string[]>(['Maize', 'Beans']);
+
+  // Article 4 Category Tabs & Custom Other Inputs
+  const [activeCategoryTab, setActiveCategoryTab] = useState<'crops' | 'animals'>('crops');
+  const [showCustomCropInput, setShowCustomCropInput] = useState(false);
+  const [customCropText, setCustomCropText] = useState('');
+  const [showCustomAnimalInput, setShowCustomAnimalInput] = useState(false);
+  const [customAnimalText, setCustomAnimalText] = useState('');
 
   const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
   const [savedFarm, setSavedFarm] = useState<Farm | null>(null);
@@ -36,13 +43,37 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     setStep(2);
   };
 
-  const handleToggleCrop = (crop: string) => {
-    if (cropsSpecialized.includes(crop)) {
+  const handleToggleItem = (item: string) => {
+    if (cropsSpecialized.includes(item)) {
       if (cropsSpecialized.length > 1) {
-        setCropsSpecialized(cropsSpecialized.filter((c) => c !== crop));
+        setCropsSpecialized(cropsSpecialized.filter((c) => c !== item));
       }
     } else {
-      setCropsSpecialized([...cropsSpecialized, crop]);
+      setCropsSpecialized([...cropsSpecialized, item]);
+    }
+  };
+
+  const handleAddCustomCrop = () => {
+    const trimmed = customCropText.trim();
+    if (trimmed && !cropsSpecialized.includes(trimmed)) {
+      setCropsSpecialized([...cropsSpecialized, trimmed]);
+      setCustomCropText('');
+      setShowCustomCropInput(false);
+    }
+  };
+
+  const handleAddCustomAnimal = () => {
+    const trimmed = customAnimalText.trim();
+    if (trimmed && !cropsSpecialized.includes(trimmed)) {
+      setCropsSpecialized([...cropsSpecialized, trimmed]);
+      setCustomAnimalText('');
+      setShowCustomAnimalInput(false);
+    }
+  };
+
+  const handleRemoveItem = (item: string) => {
+    if (cropsSpecialized.length > 1) {
+      setCropsSpecialized(cropsSpecialized.filter((c) => c !== item));
     }
   };
 
@@ -93,13 +124,21 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     // Save farm to Dexie
     await db.farms.put(newFarm);
 
-    // Create a default field for immediate convenience
+    // Create a default field for immediate convenience with primary crop or first item
+    const primaryCrop = cropsSpecialized.find(
+      (c) =>
+        !animalOptionsList.includes(c) &&
+        !['Chickens', 'Broilers', 'Ducks', 'Pigs', 'Horses', 'Cattle', 'Goats', 'Sheep'].some((a) =>
+          c.includes(a)
+        )
+    ) || cropsSpecialized[0] || 'Maize';
+
     await db.fields.put({
       id: 'field_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       farmId: newFarm.id,
       name: 'Main Field',
       size: newFarm.size,
-      cropCurrent: cropsSpecialized[0] || 'Maize',
+      cropCurrent: primaryCrop,
     });
 
     localStorage.setItem('farmpro_onboarding_completed', 'true');
@@ -113,7 +152,40 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     }
   };
 
-  const commonCropsList = ['Maize', 'Groundnuts', 'Tomatoes', 'Soybeans', 'Cabbage', 'Sorghum'];
+  // Quick options for Crops including Beans, Horticulture, and common regional crops
+  const cropOptionsList = [
+    'Maize',
+    'Beans',
+    'Horticulture',
+    'Groundnuts',
+    'Tomatoes',
+    'Soybeans',
+    'Cabbage',
+    'Sorghum',
+    'Potatoes',
+    'Wheat',
+  ];
+
+  // Quick options for Animals matching all animal options in animal section
+  const animalOptionsList = [
+    'Chickens - Layers',
+    'Broilers',
+    'Ducks',
+    'Pigs',
+    'Horses',
+    'Cattle - Beef',
+    'Cattle - Dairy',
+    'Goats',
+    'Sheep',
+  ];
+
+  const selectedCropsCount = cropsSpecialized.filter(
+    (c) => cropOptionsList.includes(c) || !animalOptionsList.includes(c)
+  ).length;
+
+  const selectedAnimalsCount = cropsSpecialized.filter((c) =>
+    animalOptionsList.includes(c)
+  ).length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-4 sm:p-6 max-w-lg mx-auto">
@@ -305,30 +377,232 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
               </div>
             </div>
 
-            {/* Field 4: Main Crops Specialized */}
+            {/* Field 4: Crops or Animals you grow */}
             <div>
-              <label className="block text-base font-bold text-farm-navy mb-1.5">
-                4. {t('onboarding.crops_specialized')}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {commonCropsList.map((crop) => {
-                  const isSelected = cropsSpecialized.includes(crop);
-                  return (
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-base font-bold text-farm-navy">
+                  4. {t('onboarding.crops_specialized')}
+                </label>
+                <span className="text-xs font-semibold text-slate-500">
+                  {cropsSpecialized.length} selected
+                </span>
+              </div>
+
+              {/* Category Segmented Tabs (Crops / Animals) */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl mb-3 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryTab('crops')}
+                  className={`py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    activeCategoryTab === 'crops'
+                      ? 'bg-white text-farm-navy shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Wheat className="w-4 h-4 text-emerald-600" />
+                  <span>Crops & Produce</span>
+                  {selectedCropsCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-xs rounded-full">
+                      {selectedCropsCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryTab('animals')}
+                  className={`py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    activeCategoryTab === 'animals'
+                      ? 'bg-white text-farm-navy shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <PawPrint className="w-4 h-4 text-amber-600" />
+                  <span>Animals / Livestock</span>
+                  {selectedAnimalsCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 bg-amber-100 text-amber-800 text-xs rounded-full">
+                      {selectedAnimalsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* CROPS TAB CONTENT */}
+              {activeCategoryTab === 'crops' && (
+                <div className="space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex flex-wrap gap-1.5">
+                    {cropOptionsList.map((crop) => {
+                      const isSelected = cropsSpecialized.includes(crop);
+                      return (
+                        <button
+                          key={crop}
+                          type="button"
+                          onClick={() => handleToggleItem(crop)}
+                          className={`min-h-[40px] px-3 py-1.5 rounded-xl text-sm font-bold transition-all cursor-pointer select-none ${
+                            isSelected
+                              ? 'bg-farm-navy text-farm-cyan border-2 border-farm-navy shadow-sm'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent'
+                          }`}
+                        >
+                          {isSelected ? `✓ ${crop}` : `+ ${crop}`}
+                        </button>
+                      );
+                    })}
+
+                    {/* Other / Custom Crop Option Button */}
                     <button
-                      key={crop}
                       type="button"
-                      onClick={() => handleToggleCrop(crop)}
-                      className={`min-h-[44px] px-3.5 py-2 rounded-xl text-base font-bold transition-all cursor-pointer select-none ${
-                        isSelected
-                          ? 'bg-farm-navy text-farm-cyan border-2 border-farm-navy'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent'
+                      onClick={() => setShowCustomCropInput(!showCustomCropInput)}
+                      className={`min-h-[40px] px-3 py-1.5 rounded-xl text-sm font-bold transition-all cursor-pointer select-none border-2 ${
+                        showCustomCropInput
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200'
                       }`}
                     >
-                      {isSelected ? `✓ ${crop}` : `+ ${crop}`}
+                      <span className="inline-flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                        Other (Custom Crop)
+                      </span>
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+
+                  {/* Custom Crop Input Box */}
+                  {showCustomCropInput && (
+                    <div className="p-3 bg-emerald-50/90 rounded-xl border border-emerald-300 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <label className="block text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                        Specify Custom Crop Name
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={customCropText}
+                          onChange={(e) => setCustomCropText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCustomCrop();
+                            }
+                          }}
+                          placeholder="e.g. Garlic, Sunflowers, Sweet Potatoes, Paprika..."
+                          className="flex-1 min-h-[42px] px-3 py-1.5 text-sm font-semibold rounded-lg border-2 border-emerald-400 bg-white outline-none focus:border-farm-navy"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomCrop}
+                          disabled={!customCropText.trim()}
+                          className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-sm font-bold rounded-lg cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ANIMALS TAB CONTENT */}
+              {activeCategoryTab === 'animals' && (
+                <div className="space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex flex-wrap gap-1.5">
+                    {animalOptionsList.map((animal) => {
+                      const isSelected = cropsSpecialized.includes(animal);
+                      return (
+                        <button
+                          key={animal}
+                          type="button"
+                          onClick={() => handleToggleItem(animal)}
+                          className={`min-h-[40px] px-3 py-1.5 rounded-xl text-sm font-bold transition-all cursor-pointer select-none ${
+                            isSelected
+                              ? 'bg-farm-navy text-farm-cyan border-2 border-farm-navy shadow-sm'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-2 border-transparent'
+                          }`}
+                        >
+                          {isSelected ? `✓ ${animal}` : `+ ${animal}`}
+                        </button>
+                      );
+                    })}
+
+                    {/* Other / Custom Animal Option Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomAnimalInput(!showCustomAnimalInput)}
+                      className={`min-h-[40px] px-3 py-1.5 rounded-xl text-sm font-bold transition-all cursor-pointer select-none border-2 ${
+                        showCustomAnimalInput
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                        Other (Custom Animal)
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Custom Animal Input Box */}
+                  {showCustomAnimalInput && (
+                    <div className="p-3 bg-amber-50/90 rounded-xl border border-amber-300 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
+                        Specify Custom Animal / Livestock
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={customAnimalText}
+                          onChange={(e) => setCustomAnimalText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCustomAnimal();
+                            }
+                          }}
+                          placeholder="e.g. Rabbits, Quails, Tilapia/Fish, Bees, Turkeys..."
+                          className="flex-1 min-h-[42px] px-3 py-1.5 text-sm font-semibold rounded-lg border-2 border-amber-400 bg-white outline-none focus:border-farm-navy"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomAnimal}
+                          disabled={!customAnimalText.trim()}
+                          className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white text-sm font-bold rounded-lg cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* All Currently Selected Items Badges */}
+              {cropsSpecialized.length > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-slate-100">
+                  <div className="text-xs font-bold text-slate-500 mb-1.5">
+                    Selected for your farm:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {cropsSpecialized.map((item) => (
+                      <span
+                        key={item}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-farm-navy text-farm-cyan border border-farm-navy/20 shadow-xs"
+                      >
+                        <span>{item}</span>
+                        {cropsSpecialized.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item)}
+                            className="hover:text-red-300 p-0.5 rounded cursor-pointer"
+                            title="Remove"
+                          >
+                            <X className="w-3 h-3 stroke-[3]" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -387,3 +661,4 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     </div>
   );
 };
+
