@@ -9,12 +9,22 @@ import { CropsModule } from './components/crops/CropsModule';
 import { AnimalsModule } from './components/animals/AnimalsModule';
 import { FarmChatModule } from './components/farmchat/FarmChatModule';
 import { MoreModule } from './components/more/MoreModule';
+import { AppLockScreen } from './components/security/AppLockScreen';
+import { AppLockSetupModal } from './components/security/AppLockSetupModal';
 import { Sprout, Loader2 } from 'lucide-react';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentFarm, setCurrentFarm] = useState<Farm | null>(null);
   const [activeTab, setActiveTab] = useState<NavTab>('home');
+
+  // App Lock Security State
+  const [isAppLocked, setIsAppLocked] = useState<boolean>(() => {
+    const isEnabled = localStorage.getItem('farmpro_app_lock_enabled') === 'true';
+    const hasPin = Boolean(localStorage.getItem('farmpro_app_lock_pin'));
+    return isEnabled && hasPin;
+  });
+  const [showPinSetupModal, setShowPinSetupModal] = useState<boolean>(false);
 
   // Navigation deep-linking params
   const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
@@ -122,6 +132,7 @@ export default function App() {
               setCurrentFarm(null);
               setActiveTab('home');
             }}
+            onLockApp={() => setIsAppLocked(true)}
           />
         )}
       </main>
@@ -136,6 +147,27 @@ export default function App() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
+
+      {/* 4-Digit App Lock Screen Overlay */}
+      {isAppLocked && (
+        <AppLockScreen
+          onUnlock={() => setIsAppLocked(false)}
+          onPinResetSuccess={() => {
+            setIsAppLocked(false);
+            setShowPinSetupModal(true);
+          }}
+        />
+      )}
+
+      {/* Post-PIN-Reset New PIN Setup Flow */}
+      {showPinSetupModal && (
+        <AppLockSetupModal
+          isOpen={showPinSetupModal}
+          mode="setup"
+          onClose={() => setShowPinSetupModal(false)}
+          onSuccess={() => setShowPinSetupModal(false)}
+        />
+      )}
     </div>
   );
 }

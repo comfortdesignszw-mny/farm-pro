@@ -28,6 +28,9 @@ import {
   Stethoscope,
   Sprout,
   ShieldAlert,
+  Lock,
+  KeyRound,
+  Shield,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage } from '../../i18n';
@@ -44,17 +47,21 @@ import { Farm, LanguageCode, SizeUnit, OfficerContact } from '../../types';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import { AgritexDirectoryModal } from '../common/AgritexDirectoryModal';
 import { AddEditOfficerModal } from '../common/AddEditOfficerModal';
+import { ResetFarmDataModal } from '../common/ResetFarmDataModal';
+import { AppLockSetupModal } from '../security/AppLockSetupModal';
 
 interface SettingsModuleProps {
   farm: Farm;
   onFarmUpdated: (updated: Farm) => void;
   onResetComplete: () => void;
+  onLockApp?: () => void;
 }
 
 export const SettingsModule: React.FC<SettingsModuleProps> = ({
   farm,
   onFarmUpdated,
   onResetComplete,
+  onLockApp,
 }) => {
   const { t, i18n } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -85,6 +92,20 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   const [editingOfficer, setEditingOfficer] = useState<OfficerContact | null>(null);
   const [officerCount, setOfficerCount] = useState<number>(0);
   const [officerPreviewList, setOfficerPreviewList] = useState<OfficerContact[]>([]);
+
+  // Safe Cautious Reset Modal State
+  const [showResetDataModal, setShowResetDataModal] = useState(false);
+
+  // App Lock Security State
+  const [showAppLockModal, setShowAppLockModal] = useState(false);
+  const [appLockModalMode, setAppLockModalMode] = useState<'setup' | 'change' | 'disable'>('setup');
+  const [isAppLockEnabled, setIsAppLockEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('farmpro_app_lock_enabled') === 'true';
+  });
+
+  const refreshAppLockState = () => {
+    setIsAppLockEnabled(localStorage.getItem('farmpro_app_lock_enabled') === 'true');
+  };
 
   const loadOfficerContacts = async () => {
     try {
@@ -301,13 +322,14 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     reader.readAsText(file);
   };
 
-  const handleResetData = async () => {
-    if (confirm(t('settings.reset_confirm'))) {
-      if (confirm('Final warning: This will delete all cycles, animal records, inputs, and yield on this device. Proceed?')) {
-        await resetAllFarmData();
-        onResetComplete();
-      }
-    }
+  const handleResetData = () => {
+    setShowResetDataModal(true);
+  };
+
+  const handleConfirmReset = async () => {
+    await resetAllFarmData();
+    setShowResetDataModal(false);
+    onResetComplete();
   };
 
   return (
@@ -790,7 +812,107 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         </div>
       </section>
 
-      {/* 5. Reset Data Section */}
+      {/* 5. App Lock & Security Section */}
+      <section className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-farm-navy text-farm-cyan flex items-center justify-center">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-farm-navy">
+                {t('settings.app_lock_title')}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                {t('settings.app_lock_desc')}
+              </p>
+            </div>
+          </div>
+
+          <span
+            className={`text-xs font-black px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+              isAppLockEnabled
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200'
+            }`}
+          >
+            {isAppLockEnabled ? (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{t('settings.app_lock_enabled')}</span>
+              </>
+            ) : (
+              <>
+                <Shield className="w-3.5 h-3.5 text-slate-400" />
+                <span>{t('settings.app_lock_disabled')}</span>
+              </>
+            )}
+          </span>
+        </div>
+
+        <div className="pt-2">
+          {!isAppLockEnabled ? (
+            <button
+              type="button"
+              id="setup-app-lock-btn"
+              onClick={() => {
+                setAppLockModalMode('setup');
+                setShowAppLockModal(true);
+              }}
+              className="w-full min-h-[48px] py-2.5 px-4 bg-farm-navy hover:bg-farm-navy-light text-farm-cyan font-bold text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>{t('settings.set_pin_btn')}</span>
+            </button>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                id="change-pin-btn"
+                onClick={() => {
+                  setAppLockModalMode('change');
+                  setShowAppLockModal(true);
+                }}
+                className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <KeyRound className="w-4 h-4 text-cyan-600" />
+                <span>{t('settings.change_pin_btn')}</span>
+              </button>
+
+              <button
+                type="button"
+                id="disable-pin-btn"
+                onClick={() => {
+                  setAppLockModalMode('disable');
+                  setShowAppLockModal(true);
+                }}
+                className="py-2.5 px-3 bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-bold text-xs rounded-xl border border-slate-200 hover:border-rose-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Lock className="w-4 h-4 text-slate-400" />
+                <span>{t('settings.disable_pin_btn')}</span>
+              </button>
+
+              <button
+                type="button"
+                id="lock-app-now-btn"
+                onClick={() => {
+                  if (onLockApp) {
+                    onLockApp();
+                  } else {
+                    window.location.reload();
+                  }
+                }}
+                className="py-2.5 px-3 bg-farm-navy hover:bg-farm-navy-light text-farm-cyan font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Lock className="w-4 h-4" />
+                <span>{t('settings.lock_now_btn')}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 6. Reset Data Section */}
       <section className="bg-rose-50 rounded-2xl p-5 border border-rose-200 space-y-3">
         <h3 className="text-base font-black text-rose-900 flex items-center gap-2">
           <Trash2 className="w-5 h-5 text-rose-600" />
@@ -877,6 +999,32 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           onSaved={() => {
             loadOfficerContacts();
             setConfirmMsg(editingOfficer ? 'Officer contact updated' : 'New Extension / Vet contact registered successfully');
+          }}
+        />
+      )}
+
+      {/* High-Precaution Safe Reset Farm Data Modal */}
+      {showResetDataModal && (
+        <ResetFarmDataModal
+          isOpen={showResetDataModal}
+          farmName={farm.name}
+          onClose={() => setShowResetDataModal(false)}
+          onConfirmReset={handleConfirmReset}
+        />
+      )}
+
+      {/* 4-Digit App Lock Setup/Change/Disable Modal */}
+      {showAppLockModal && (
+        <AppLockSetupModal
+          isOpen={showAppLockModal}
+          mode={appLockModalMode}
+          onClose={() => {
+            setShowAppLockModal(false);
+            refreshAppLockState();
+          }}
+          onSuccess={(msg) => {
+            refreshAppLockState();
+            setConfirmMsg(msg);
           }}
         />
       )}

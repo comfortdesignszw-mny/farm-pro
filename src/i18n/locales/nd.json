@@ -198,6 +198,14 @@
     "indexeddb_healthy": "Amarekhodi Agcinwa Efowunini",
     "install_app": "Faka i-Farm Pro Efowunini Yakho",
     "install_desc": "Faka i-app kusikrini sefowuni ukuze uyisebenzise ngaphandle kwe-internet.",
+    "app_lock_title": "Ukukhiya i-App & Ukuvikeleka Kwepulazi",
+    "app_lock_desc": "Vikela amarekhodi akho lemali yepulazi nge-PIN yenombolo ezine (4-digit PIN).",
+    "app_lock_enabled": "I-PIN Ikhiyiwe",
+    "app_lock_disabled": "Akukakhiywa",
+    "set_pin_btn": "Faka i-PIN yeNombolo 4",
+    "change_pin_btn": "Tshintsha i-PIN",
+    "disable_pin_btn": "Cima Ukukhiya",
+    "lock_now_btn": "Khiya i-App Khathesi",
     "reset_data": "Cima Ulwazi Lonke Lwepulazi",
     "reset_confirm": "Uleciniso na? Lokhu kuzasusa wonke amarekhodi akulifowuni."
   }

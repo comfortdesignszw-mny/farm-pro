@@ -198,6 +198,14 @@
     "indexeddb_healthy": "Zvinyorwa Zviri Kuchengetwa Pafoni",
     "install_app": "Isa Farm Pro Pafoni Yenyu",
     "install_desc": "Isa app ino pachiratidziro chefoni kuti uishandise pasina internet.",
+    "app_lock_title": "Kukiya App & Kuchengeteka kwePurazi",
+    "app_lock_desc": "Chengetedzai zvinyorwa zvepurazi nemari yenyu ne PIN yenhamba ina (4-digit PIN).",
+    "app_lock_enabled": "PIN Yakabatidzwa",
+    "app_lock_disabled": "Haina Kukiya",
+    "set_pin_btn": "Isa PIN yeNhamba 4",
+    "change_pin_btn": "Chinja PIN",
+    "disable_pin_btn": "Dzima Kukiya",
+    "lock_now_btn": "Kiya App Izvozvi",
     "reset_data": "Dzima Zvinyorwa Zvose",
     "reset_confirm": "Mune chokwadi here? Izvi zvinodzima zvinyorwa zvose zviri pafoni ino."
   }

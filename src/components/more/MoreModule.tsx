@@ -9,12 +9,14 @@ interface MoreModuleProps {
   farm: Farm;
   onFarmUpdated: (updated: Farm) => void;
   onResetComplete: () => void;
+  onLockApp?: () => void;
 }
 
 export const MoreModule: React.FC<MoreModuleProps> = ({
   farm,
   onFarmUpdated,
   onResetComplete,
+  onLockApp,
 }) => {
   const { t } = useTranslation();
   const [subTab, setSubTab] = useState<'settings' | 'tools' | 'weather'>('settings');
@@ -72,6 +74,7 @@ export const MoreModule: React.FC<MoreModuleProps> = ({
           farm={farm}
           onFarmUpdated={onFarmUpdated}
           onResetComplete={onResetComplete}
+          onLockApp={onLockApp}
         />
       )}
 

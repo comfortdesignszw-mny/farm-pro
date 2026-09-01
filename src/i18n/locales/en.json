@@ -198,6 +198,14 @@
     "indexeddb_healthy": "IndexedDB Local Storage Active",
     "install_app": "Install Farm Pro App",
     "install_desc": "Add Farm Pro to your home screen to use it outdoors without internet.",
+    "app_lock_title": "App Lock & Data Privacy",
+    "app_lock_desc": "Secure your farm records and sensitive farm data with a 4-digit PIN.",
+    "app_lock_enabled": "PIN Lock Active",
+    "app_lock_disabled": "No PIN Lock",
+    "set_pin_btn": "Set 4-Digit PIN",
+    "change_pin_btn": "Change PIN",
+    "disable_pin_btn": "Turn Off Lock",
+    "lock_now_btn": "Lock App Now",
     "reset_data": "Reset Farm Data",
     "reset_confirm": "Are you sure? This will delete all local records on this device."
   }
